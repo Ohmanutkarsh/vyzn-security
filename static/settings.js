@@ -709,11 +709,13 @@ async function initStorageControls() {
         }
       }
       if (data) {
+        const localSavedDir = localStorage.getItem('vyzn_storage_folder');
+        const activeDir = localSavedDir || data.storage_dir || 'C:\\VyznFootage';
         if (inputFolder) {
-          inputFolder.value = data.storage_dir || '';
+          inputFolder.value = activeDir;
         }
         if (valPath) {
-          valPath.textContent = data.storage_dir || 'Default: ./data/clips';
+          valPath.textContent = activeDir;
         }
         if (valFree) {
           const used = data.disk_used_gb || 0;
@@ -782,6 +784,7 @@ async function initStorageControls() {
           throw new Error(data.detail || 'Failed to update storage folder.');
         }
 
+        try { localStorage.setItem('vyzn_storage_folder', dirVal); } catch (_) {}
         showToast('Storage folder updated successfully!');
         if (feedback) {
           feedback.style.color = '#10b981';
@@ -863,26 +866,15 @@ async function initStorageControls() {
         }
 
         // On cloud or fallback: prompt user for exact folder path
-        const currentVal = inputFolder ? inputFolder.value : 'C:\\VyznFootage';
-        const entered = prompt('Choose local folder path for saving clips and footage:', currentVal);
-        if (entered && entered.trim()) {
-          if (inputFolder) inputFolder.value = entered.trim();
-          showToast(`Storage path set to: ${entered.trim()}`);
-          if (btnSave) btnSave.click();
-          return;
-        }
-
-        // Strategy 4: Fallback prompt dialog
-        const cur = inputFolder ? inputFolder.value.trim() : 'C:\\Vyzn testing data';
-        const entered = window.prompt(
-          'Select Storage Folder:\nEnter directory path for clips and continuous footage:',
-          cur || 'C:\\Vyzn testing data'
-        );
-        if (entered && entered.trim()) {
-          const cleaned = entered.trim();
+        const currentVal = inputFolder ? inputFolder.value : (localStorage.getItem('vyzn_storage_folder') || 'C:\\VyznFootage');
+        const enteredVal = window.prompt('Choose local folder path for saving clips and footage (e.g. C:\\VyznFootage or D:\\Recordings):', currentVal);
+        if (enteredVal && enteredVal.trim()) {
+          const cleaned = enteredVal.trim();
           if (inputFolder) inputFolder.value = cleaned;
+          try { localStorage.setItem('vyzn_storage_folder', cleaned); } catch (_) {}
           showToast(`Storage path set to: ${cleaned}`);
           if (btnSave) btnSave.click();
+          return;
         }
       } catch (err) {
         console.error('Folder picker error:', err);

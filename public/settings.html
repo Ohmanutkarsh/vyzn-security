@@ -1,549 +1,559 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Settings — VYZN</title>
-  <link rel="stylesheet" href="/static/tokens.css">
-  <link rel="stylesheet" href="/static/components/ui.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    .settings-layout {
-      max-width: 800px;
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-6, 24px);
-      padding-bottom: var(--space-12, 48px);
-    }
-    .settings-card {
-      background: var(--bg-1);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-panel, 12px);
-      padding: var(--space-5, 20px) var(--space-6, 24px);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    .settings-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: var(--space-4, 16px);
-      padding-bottom: var(--space-3, 12px);
-      border-bottom: 1px solid var(--border-subtle);
-    }
-    .settings-card-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text-1);
-      margin: 0;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .settings-badge {
-      font-size: 11px;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .settings-badge.success {
-      background: rgba(16, 185, 129, 0.15);
-      color: #10b981;
-    }
-    .settings-badge.info {
-      background: rgba(59, 130, 246, 0.15);
-      color: #3b82f6;
-    }
-    .settings-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-    }
-    .settings-row:last-child {
-      border-bottom: none;
-    }
-    .settings-label {
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text-1);
-    }
-    .settings-sublabel {
-      font-size: 12px;
-      color: var(--text-3);
-      margin-top: 2px;
-    }
-    .settings-value {
-      font-size: 14px;
-      color: var(--text-2);
-      font-family: var(--font-mono, monospace);
-    }
-    .theme-toggle-group {
-      display: inline-flex;
-      background: var(--bg-2);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      padding: 3px;
-      gap: 3px;
-    }
-    .theme-toggle-btn {
-      background: none;
-      border: none;
-      padding: 6px 14px;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text-2);
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .theme-toggle-btn.is-active {
-      background: var(--bg-1);
-      color: var(--text-1);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    }
-    .settings-form-group {
-      margin-top: 14px;
-    }
-    .settings-input-wrap {
-      display: flex;
-      gap: 10px;
-      margin-top: 8px;
-    }
-    .settings-input {
-      flex: 1;
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-2);
-      color: var(--text-1);
-      font-size: 14px;
-      outline: none;
-      box-sizing: border-box;
-    }
-    .settings-input:focus {
-      border-color: var(--action);
-    }
-    .purge-guarantee-box {
-      background: rgba(59, 130, 246, 0.08);
-      border: 1px solid rgba(59, 130, 246, 0.2);
-      border-radius: 8px;
-      padding: 14px 16px;
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      font-size: 13px;
-      line-height: 1.5;
-      color: var(--text-2);
-    }
-    .toast-msg {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background: var(--bg-1);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-1);
-      padding: 12px 20px;
-      border-radius: 8px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-      display: none;
-      z-index: 10000;
-      font-size: 14px;
-    }
-  </style>
-</head>
-<body class="app-shell">
-
-  <!-- Desktop Sidebar -->
-  <div id="app-sidebar"></div>
-
-  <!-- Main Content Wrapper -->
-  <div class="shell-main-wrapper">
-    <!-- Top Header -->
-    <div id="app-header"></div>
-
-    <!-- Settings Content -->
-    <main class="shell-content" id="main-content">
-      <div class="cameras-header-row" style="margin-bottom: var(--space-6);">
-        <div>
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 4px 0;">Settings & Security</h2>
-          <span style="font-size: 13px; color: var(--text-2);">Account isolation, contact phone, visual theme, and critical operation security.</span>
-        </div>
-      </div>
-
-      <div class="settings-layout">
-        <!-- 1. Account & Multi-Tenant Isolation -->
-        <section class="settings-card" aria-labelledby="card-account-title">
-          <div class="settings-card-header">
-            <h3 class="settings-card-title" id="card-account-title">
-              <span>👤</span> Account & Isolation
-            </h3>
-            <span class="settings-badge success">Isolated Tenant</span>
-          </div>
-
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">User Account</div>
-              <div class="settings-sublabel">Your authenticated session identity</div>
-            </div>
-            <div class="settings-value" id="val-user-email">Loading…</div>
-          </div>
-
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Society / Premises</div>
-              <div class="settings-sublabel">Registered society or premises name</div>
-            </div>
-            <div class="settings-value" id="val-user-business">—</div>
-          </div>
-
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Premises Type</div>
-              <div class="settings-sublabel">Property categorization</div>
-            </div>
-            <div class="settings-value" id="val-user-business-type">Housing Society</div>
-          </div>
-
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Access Role</div>
-              <div class="settings-sublabel">Permissions on this edge system</div>
-            </div>
-            <div class="settings-value" id="val-user-role">Society Admin / Premises Manager</div>
-          </div>
-
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Account ID</div>
-              <div class="settings-sublabel">Database tenant identifier</div>
-            </div>
-            <div class="settings-value" id="val-user-id" style="font-size: 12px;">Loading…</div>
-          </div>
-
-          <div style="margin-top: 14px; padding: 10px 14px; background: var(--bg-2); border-radius: 8px; font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 8px;">
-            <span>🛡️</span>
-            <span><strong>Multi-Tenant Guarantee:</strong> Cameras, watch areas, and evidence clips are strictly isolated to your user account. Other accounts cannot view your streams or footage.</span>
-          </div>
-        </section>
-
-        <!-- 2. Phone Number Management -->
-        <section class="settings-card" aria-labelledby="card-phone-title">
-          <div class="settings-card-header">
-            <h3 class="settings-card-title" id="card-phone-title">
-              <span>📱</span> Contact Phone Number
-            </h3>
-            <span class="settings-badge info" id="phone-status-badge">Configured</span>
-          </div>
-
-          <p style="font-size: 13px; color: var(--text-2); margin: 0 0 12px 0;">
-            Add your mobile number (+91) to receive instant WhatsApp and SMS threat dispatch alerts.
-          </p>
-
-          <div class="settings-form-group">
-            <label class="settings-label" for="input-phone-number">Mobile Number (+91)</label>
-            <div class="settings-input-wrap">
-              <input type="tel" class="settings-input" id="input-phone-number" placeholder="+91 98765 43210" maxlength="15" autocomplete="tel">
-              <button type="button" class="btn btn-primary" id="btn-save-phone">Save Number</button>
-            </div>
-            <div id="phone-feedback" style="font-size: 12px; margin-top: 6px; display: none;"></div>
-          </div>
-
-          <!-- Connect VYZN Security Bot button (Where add number is) -->
-          <!-- In simple terms: this lets users click one button to open the Telegram bot and link alerts -->
-          <div style="background: var(--bg-2); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 16px; margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-            <div>
-              <div style="font-size: 14px; font-weight: 600; color: var(--text-1);">Connect VYZN Security Bot</div>
-              <div style="font-size: 12px; color: var(--text-3); margin-top: 2px;">Official bot: <strong style="color: #60a5fa;">@Vyzn_security_alert_bot</strong></div>
-            </div>
-            <button type="button" class="btn btn-primary" id="btn-phone-card-connect-tg" style="display: inline-flex; align-items: center; gap: 6px;">
-              <span>✈️</span> Connect VYZN Telegram
-            </button>
-          </div>
-        </section>
-
-        <!-- 3. Telegram Security Alerts Integration -->
-        <section class="settings-card" aria-labelledby="card-telegram-title">
-          <div class="settings-card-header">
-            <h3 class="settings-card-title" id="card-telegram-title">
-              <span>✈️</span> Telegram Security Alerts
-            </h3>
-            <span class="settings-badge" id="tg-status-badge">Checking…</span>
-          </div>
-
-          <p style="font-size: 13px; color: var(--text-2); margin: 0 0 16px 0; line-height: 1.5;">
-            Receive instant CCTV threat notifications, screenshot evidence cards, and interactive triage buttons ([⭐ Star Clip] / [❌ Not an issue]) directly on Telegram without SMS delays.
-          </p>
-
-          <!-- State: Disconnected -->
-          <div id="tg-disconnected-view" style="display: none;">
-            <div style="background: var(--bg-2); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-              <div>
-                <div style="font-size: 14px; font-weight: 500; color: var(--text-1);">Connect VYZN Security Bot</div>
-                <div style="font-size: 12px; color: var(--text-3); margin-top: 2px;">Official bot: <strong>@Vyzn_security_alert_bot</strong></div>
-              </div>
-              <button type="button" class="btn btn-primary" id="btn-connect-telegram">
-                Connect VYZN Telegram
-              </button>
-            </div>
-
-            <!-- Deep Link & Instructions Drawer -->
-            <div id="tg-connect-drawer" style="display: none; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px; padding: 16px; margin-top: 12px;">
-              <div style="font-size: 13px; font-weight: 600; color: var(--text-1); margin-bottom: 8px;">Steps to complete connection:</div>
-              <ol style="font-size: 13px; color: var(--text-2); margin: 0 0 14px 18px; padding: 0; line-height: 1.6;">
-                <li>Click the button below to open <strong>@Vyzn_security_alert_bot</strong> in Telegram.</li>
-                <li>Tap <strong>Start</strong> in Telegram to link your account.</li>
-                <li>This card will automatically update once connected!</li>
-              </ol>
-              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <a id="tg-open-deep-link" href="#" target="_blank" rel="noopener" class="btn btn-primary" style="text-decoration: none;">
-                  ✈️ Open Telegram Bot
-                </a>
-                <span style="font-size: 12px; color: var(--text-3);" id="tg-polling-indicator">Waiting for Telegram /start…</span>
-                <button type="button" id="tg-test-simulate-btn" class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;">Simulate Start (Test)</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- State: Connected -->
-          <div id="tg-connected-view" style="display: none;">
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Connected Telegram Account</div>
-                <div class="settings-sublabel">Receives real-time camera screenshots</div>
-              </div>
-              <div class="settings-value" id="val-tg-username">@username</div>
-            </div>
-
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">CCTV Threat Notifications</div>
-                <div class="settings-sublabel" id="lbl-tg-alert-sublabel">Real-time alerts and screenshots are active</div>
-              </div>
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <button type="button" class="btn btn-secondary" id="btn-toggle-tg-alerts" style="min-width: 110px;">
-                  Mute Alerts
-                </button>
-              </div>
-            </div>
-
-            <div class="settings-row" style="padding-top: 14px;">
-              <div>
-                <div class="settings-label">Actions & Testing</div>
-                <div class="settings-sublabel">Verify delivery or unlink your Telegram account</div>
-              </div>
-              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button type="button" class="btn btn-secondary" id="btn-test-tg-alert">
-                  Send Test Alert
-                </button>
-                <button type="button" class="btn btn-secondary" id="btn-disconnect-telegram" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);">
-                  Disconnect
-                </button>
-              </div>
-            </div>
-          <!-- Telegram Bot Token Configuration from BotFather -->
-          <!-- In simple terms: paste the token given by Telegram's @BotFather so the server can talk to Telegram -->
-          <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-subtle);">
-            <div style="font-size: 13px; font-weight: 500; color: var(--text-1); margin-bottom: 4px;">Telegram Bot Token (@BotFather)</div>
-            <div style="font-size: 12px; color: var(--text-3); margin-bottom: 8px;">Enter your Telegram Bot Token to activate the long-polling dispatcher for instant notifications.</div>
-            <div class="settings-input-wrap">
-              <input type="password" class="settings-input" id="input-tg-bot-token" placeholder="Paste bot token (e.g. 123456789:ABCdef...)" autocomplete="off">
-              <button type="button" class="btn btn-secondary" id="btn-save-tg-bot-token">Save Token</button>
-            </div>
-            <div id="tg-token-feedback" style="font-size: 12px; margin-top: 6px; display: none;"></div>
-          </div>
-
-          <div id="tg-feedback" style="font-size: 12px; margin-top: 10px; display: none;"></div>
-        </section>
-
-        <!-- Business Hours & Operating Schedule -->
-        <!-- In simple terms: lets the user set their business opening and closing times -->
-        <section class="settings-card" aria-labelledby="card-bh-title">
-          <div class="settings-card-header">
-            <h3 class="settings-card-title" id="card-bh-title">
-              <span>🕒</span> Business Hours & Schedule
-            </h3>
-            <span class="settings-badge info" id="bh-status-badge">Active</span>
-          </div>
-
-          <p style="font-size: 13px; color: var(--text-2); margin: 0 0 16px 0; line-height: 1.5;">
-            Configure your shop or society operating hours. During operating hours, routine customer visits are reviewed normally. Outside these hours (after-hours), unexpected intrusions trigger elevated alerts.
-          </p>
-
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Enforce Business Hours</div>
-              <div class="settings-sublabel">Enable after-hours threat monitoring when premises is closed</div>
-            </div>
-            <div>
-              <input type="checkbox" id="cb-bh-enabled" checked style="width: 18px; height: 18px; cursor: pointer;">
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px;">
-            <div>
-              <label class="settings-label" for="input-bh-start" style="display: block; margin-bottom: 6px;">Opening Time</label>
-              <input type="time" class="settings-input" id="input-bh-start" value="09:00" style="width: 100%;">
-            </div>
-            <div>
-              <label class="settings-label" for="input-bh-end" style="display: block; margin-bottom: 6px;">Closing Time</label>
-              <input type="time" class="settings-input" id="input-bh-end" value="21:00" style="width: 100%;">
-            </div>
-          </div>
-
-          <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 12px; color: var(--text-3);">Standard: <strong>09:00 AM – 09:00 PM</strong></span>
-            <button type="button" class="btn btn-primary" id="btn-save-bh">Save Business Hours</button>
-          </div>
-          <div id="bh-feedback" style="font-size: 12px; margin-top: 8px; display: none;"></div>
-        </section>
-
-        <!-- 4. Appearance & Theme -->
-        <section class="settings-card" aria-labelledby="card-theme-title">
-          <div class="settings-card-header">
-            <h3 class="settings-card-title" id="card-theme-title">
-              <span>🎨</span> Appearance & Theme
-            </h3>
-          </div>
-
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Interface Theme</div>
-              <div class="settings-sublabel">Select preferred color scheme for dashboard</div>
-            </div>
-            <div class="theme-toggle-group" id="theme-segmented-group">
-              <button type="button" class="theme-toggle-btn" data-theme-val="dark">Dark</button>
-              <button type="button" class="theme-toggle-btn" data-theme-val="light">Light</button>
-              <button type="button" class="theme-toggle-btn" data-theme-val="system">System</button>
-            </div>
-          </div>
-        </section>
-
-        <!-- 4. Critical Action Security Gate (Security PIN) -->
-        <section class="settings-card" aria-labelledby="card-sec-title">
-          <div class="settings-card-header">
-            <h3 class="settings-card-title" id="card-sec-title">
-              <span>🔐</span> Extra Security Gate (6-Digit PIN)
-            </h3>
-            <span class="settings-badge success">Enforced</span>
-          </div>
-
-          <p style="font-size: 13px; color: var(--text-2); margin: 0 0 16px 0; line-height: 1.5;">
-            To protect your store and evidence, destructive and administrative operations (<strong>adding cameras</strong>, <strong>deleting cameras</strong>, and <strong>deleting video clips</strong>) require confirmation with your 6-digit Security PIN.
-          </p>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-            <div>
-              <label class="settings-label" for="input-current-pin" style="display: block; margin-bottom: 6px;">Current PIN</label>
-              <input type="password" class="settings-input" id="input-current-pin" placeholder="Default: 202600" maxlength="8" inputmode="numeric" style="width: 100%;">
-            </div>
-            <div>
-              <label class="settings-label" for="input-new-pin" style="display: block; margin-bottom: 6px;">New 6-Digit PIN</label>
-              <input type="password" class="settings-input" id="input-new-pin" placeholder="e.g. 583921" maxlength="8" inputmode="numeric" style="width: 100%;">
-            </div>
-          </div>
-
-          <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 12px; color: var(--text-3);">Default factory PIN: <strong>202600</strong></span>
-            <button type="button" class="btn btn-secondary" id="btn-update-pin">Update Security PIN</button>
-          </div>
-          <div id="pin-feedback" style="font-size: 12px; margin-top: 8px; display: none;"></div>
-        </section>
-
-        <!-- 5. Storage Space Folder & Safe Video Retention -->
-        <section class="settings-card" aria-labelledby="card-purge-title">
-          <div class="settings-card-header">
-            <h3 class="settings-card-title" id="card-purge-title">
-              <span>💾</span> Storage Space & Video Footages Folder
-            </h3>
-            <span class="settings-badge success" id="storage-status-badge">Active</span>
-          </div>
-
-          <div class="purge-guarantee-box">
-            <span style="font-size: 20px;">🛡️</span>
-            <div>
-              <strong>Crash-Resistant Storage Protection:</strong> All continuous video footages, camera recordings, and incident clips are stored in this dedicated directory. Your recordings are permanently protected and will <strong>never</strong> be removed or wiped on system errors or restarts.
-            </div>
-          </div>
-
-          <!-- Configurable Storage Space Folder Input -->
-          <div style="margin-top: 16px;">
-            <label class="settings-label" for="input-storage-folder" style="display: block; margin-bottom: 6px;">
-              Video & Clips Storage Directory
-            </label>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <input type="text" class="settings-input" id="input-storage-folder" placeholder="e.g. C:\VyznFootage or D:\Recordings" style="flex: 1; min-width: 260px; font-family: var(--font-mono, monospace);">
-              <input type="file" id="input-folder-picker" webkitdirectory directory style="display: none;">
-              <button type="button" class="btn btn-secondary" id="btn-browse-folder" style="white-space: nowrap;">📁 Choose Folder</button>
-              <button type="button" class="btn btn-primary" id="btn-save-storage" style="white-space: nowrap;">Save Storage Folder</button>
-            </div>
-            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center;">
-              <span style="font-size: 11px; color: var(--text-muted, #94a3b8);">Quick presets:</span>
-              <button type="button" class="btn-preset-path btn btn-xs" data-path="C:\VyznFootage" style="font-size: 11px; padding: 2px 8px; cursor: pointer; border: 1px solid var(--border-color, #334155); background: transparent; color: var(--text-color, #e2e8f0); border-radius: 4px;">C:\VyznFootage</button>
-              <button type="button" class="btn-preset-path btn btn-xs" data-path="D:\VyznFootage" style="font-size: 11px; padding: 2px 8px; cursor: pointer; border: 1px solid var(--border-color, #334155); background: transparent; color: var(--text-color, #e2e8f0); border-radius: 4px;">D:\VyznFootage</button>
-              <button type="button" class="btn-preset-path btn btn-xs" data-path="C:\Vyzn testing data" style="font-size: 11px; padding: 2px 8px; cursor: pointer; border: 1px solid var(--border-color, #334155); background: transparent; color: var(--text-color, #e2e8f0); border-radius: 4px;">C:\Vyzn testing data</button>
-            </div>
-            <div id="storage-feedback" style="font-size: 12px; margin-top: 6px; display: none;"></div>
-          </div>
-
-          <div class="settings-row" style="margin-top: 16px;">
-            <div>
-              <div class="settings-label">Active Storage Folder</div>
-              <div class="settings-sublabel">Full path on disk where camera 1 & clips are written</div>
-            </div>
-            <div class="settings-value" id="val-storage-path" style="font-size: 12px; word-break: break-all;">Loading…</div>
-          </div>
-
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Disk Space Available</div>
-              <div class="settings-sublabel">Headroom on selected storage partition</div>
-            </div>
-            <div class="settings-value" id="val-disk-free">Calculating…</div>
-          </div>
-
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Total Preserved Clips</div>
-              <div class="settings-sublabel">Verified video evidence events safely stored</div>
-            </div>
-            <div class="settings-value" id="val-clips-stored">—</div>
-          </div>
-
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Ring Buffer Maximum Retention</div>
-              <div class="settings-sublabel">Standard retention period before automatic cleanup</div>
-            </div>
-            <div class="settings-value">72 hours</div>
-          </div>
-
-          <div class="settings-row" style="border-top: 1px dashed var(--border, rgba(255,255,255,0.08)); padding-top: 14px; margin-top: 14px;">
-            <div>
-              <div class="settings-label" style="color: var(--alert, #ef4444);">Purge Previous Clips</div>
-              <div class="settings-sublabel">Delete all historical clips and test footages from database & disk</div>
-            </div>
-            <div>
-              <button type="button" class="btn btn-secondary" id="btn-purge-all-clips" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);">
-                🗑️ Delete All Previous Clips
-              </button>
-            </div>
-          </div>
-        </section>
-      </div>
-    </main>
-
-    <!-- Mobile Bottom Navigation -->
-    <div id="app-bottom-nav"></div>
-  </div>
-
-  <div id="toast-notification" class="toast-msg"></div>
-
-  <script type="module" src="/static/settings.js"></script>
-</body>
-</html>
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — VYZN</title>
+  <link rel="stylesheet" href="/static/tokens.css">
+  <link rel="stylesheet" href="/static/components/ui.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .settings-layout {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-6, 24px);
+      padding-bottom: var(--space-12, 48px);
+    }
+    .settings-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-panel, 12px);
+      padding: var(--space-5, 20px) var(--space-6, 24px);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .settings-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-4, 16px);
+      padding-bottom: var(--space-3, 12px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .settings-card-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-1);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .settings-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .settings-badge.success {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+    }
+    .settings-badge.info {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+    }
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .settings-row:last-child {
+      border-bottom: none;
+    }
+    .settings-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-1);
+    }
+    .settings-sublabel {
+      font-size: 12px;
+      color: var(--text-3);
+      margin-top: 2px;
+    }
+    .settings-value {
+      font-size: 14px;
+      color: var(--text-2);
+      font-family: var(--font-mono, monospace);
+    }
+    .theme-toggle-group {
+      display: inline-flex;
+      background: var(--bg-2);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 3px;
+    }
+    .theme-toggle-btn {
+      background: none;
+      border: none;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-2);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .theme-toggle-btn.is-active {
+      background: var(--bg-1);
+      color: var(--text-1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .settings-form-group {
+      margin-top: 14px;
+    }
+    .settings-input-wrap {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .settings-input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-2);
+      color: var(--text-1);
+      font-size: 14px;
+      outline: none;
+      box-sizing: border-box;
+    }
+    .settings-input:focus {
+      border-color: var(--action);
+    }
+    .purge-guarantee-box {
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-2);
+    }
+    .toast-msg {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--bg-1);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-1);
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      display: none;
+      z-index: 10000;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body class="app-shell">
+
+  <!-- Desktop Sidebar -->
+  <div id="app-sidebar"></div>
+
+  <!-- Main Content Wrapper -->
+  <div class="shell-main-wrapper">
+    <!-- Top Header -->
+    <div id="app-header"></div>
+
+    <!-- Settings Content -->
+    <main class="shell-content" id="main-content">
+      <div class="cameras-header-row" style="margin-bottom: var(--space-4);">
+        <div>
+          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 4px 0;">Settings & Security</h2>
+          <span style="font-size: 13px; color: var(--text-2);">Account isolation, contact phone, visual theme, and critical operation security.</span>
+        </div>
+      </div>
+
+      <!-- Settings Sections Bar -->
+      <nav class="settings-section-nav" aria-label="Settings Sections" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: var(--space-6, 24px); position: sticky; top: 0; z-index: 10; background: var(--bg-canvas, #090d16); padding: 8px 0;">
+        <a href="#card-account" class="settings-nav-chip" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px; font-weight: 500; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--bg-1); color: var(--text-1); text-decoration: none;"><span>👤</span><span>Account</span></a>
+        <a href="#card-phone" class="settings-nav-chip" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px; font-weight: 500; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--bg-1); color: var(--text-2); text-decoration: none;"><span>📱</span><span>Phone</span></a>
+        <a href="#card-telegram" class="settings-nav-chip" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px; font-weight: 500; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--bg-1); color: var(--text-2); text-decoration: none;"><span>✈️</span><span>Threat Dispatch</span></a>
+        <a href="#card-pin" class="settings-nav-chip" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px; font-weight: 500; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--bg-1); color: var(--text-2); text-decoration: none;"><span>🔒</span><span>Security PIN</span></a>
+        <a href="#card-business-hours" class="settings-nav-chip" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px; font-weight: 500; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--bg-1); color: var(--text-2); text-decoration: none;"><span>⏰</span><span>Business Hours</span></a>
+        <a href="#card-storage" class="settings-nav-chip" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px; font-weight: 500; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--bg-1); color: var(--text-2); text-decoration: none;"><span>💾</span><span>Storage & Clips</span></a>
+      </nav>
+
+      <div class="settings-layout">
+        <!-- 1. Account & Multi-Tenant Isolation -->
+        <section class="settings-card" id="card-account" aria-labelledby="card-account-title">
+          <div class="settings-card-header">
+            <h3 class="settings-card-title" id="card-account-title">
+              <span>👤</span> Account & Isolation
+            </h3>
+            <span class="settings-badge success">Isolated Tenant</span>
+          </div>
+
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">User Account</div>
+              <div class="settings-sublabel">Your authenticated session identity</div>
+            </div>
+            <div class="settings-value" id="val-user-email">Loading…</div>
+          </div>
+
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Society / Premises</div>
+              <div class="settings-sublabel">Registered society or premises name</div>
+            </div>
+            <div class="settings-value" id="val-user-business">—</div>
+          </div>
+
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Premises Type</div>
+              <div class="settings-sublabel">Property categorization</div>
+            </div>
+            <div class="settings-value" id="val-user-business-type">Housing Society</div>
+          </div>
+
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Access Role</div>
+              <div class="settings-sublabel">Permissions on this edge system</div>
+            </div>
+            <div class="settings-value" id="val-user-role">Society Admin / Premises Manager</div>
+          </div>
+
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Account ID</div>
+              <div class="settings-sublabel">Database tenant identifier</div>
+            </div>
+            <div class="settings-value" id="val-user-id" style="font-size: 12px;">Loading…</div>
+          </div>
+
+          <div style="margin-top: 14px; padding: 10px 14px; background: var(--bg-2); border-radius: 8px; font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 8px;">
+            <span>🛡️</span>
+            <span><strong>Multi-Tenant Guarantee:</strong> Cameras, watch areas, and evidence clips are strictly isolated to your user account. Other accounts cannot view your streams or footage.</span>
+          </div>
+        </section>
+
+        <!-- 2. Phone Number Management -->
+        <section class="settings-card" id="card-phone" aria-labelledby="card-phone-title">
+          <div class="settings-card-header">
+            <h3 class="settings-card-title" id="card-phone-title">
+              <span>📱</span> Contact Phone Number
+            </h3>
+            <span class="settings-badge info" id="phone-status-badge">Configured</span>
+          </div>
+
+          <p style="font-size: 13px; color: var(--text-2); margin: 0 0 12px 0;">
+            Add your mobile number (+91) to receive instant WhatsApp and SMS threat dispatch alerts.
+          </p>
+
+          <div class="settings-form-group">
+            <label class="settings-label" for="input-phone-number">Mobile Number (+91)</label>
+            <div class="settings-input-wrap">
+              <input type="tel" class="settings-input" id="input-phone-number" placeholder="+91 98765 43210" maxlength="15" autocomplete="tel">
+              <button type="button" class="btn btn-primary" id="btn-save-phone">Save Number</button>
+            </div>
+            <div id="phone-feedback" style="font-size: 12px; margin-top: 6px; display: none;"></div>
+          </div>
+
+          <!-- Connect VYZN Security Bot button (Where add number is) -->
+          <!-- In simple terms: this lets users click one button to open the Telegram bot and link alerts -->
+          <div style="background: var(--bg-2); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 16px; margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+            <div>
+              <div style="font-size: 14px; font-weight: 600; color: var(--text-1);">Connect VYZN Security Bot</div>
+              <div style="font-size: 12px; color: var(--text-3); margin-top: 2px;">Official bot: <strong style="color: #60a5fa;">@Vyzn_security_alert_bot</strong></div>
+            </div>
+            <button type="button" class="btn btn-primary" id="btn-phone-card-connect-tg" style="display: inline-flex; align-items: center; gap: 6px;">
+              <span>✈️</span> Connect VYZN Telegram
+            </button>
+          </div>
+        </section>
+
+        <!-- 3. Telegram Security Alerts Integration -->
+        <section class="settings-card" id="card-telegram" aria-labelledby="card-telegram-title">
+          <div class="settings-card-header">
+            <h3 class="settings-card-title" id="card-telegram-title">
+              <span>✈️</span> Telegram Security Alerts
+            </h3>
+            <span class="settings-badge" id="tg-status-badge">Checking…</span>
+          </div>
+
+          <p style="font-size: 13px; color: var(--text-2); margin: 0 0 16px 0; line-height: 1.5;">
+            Receive instant CCTV threat notifications, screenshot evidence cards, and interactive triage buttons ([⭐ Star Clip] / [❌ Not an issue]) directly on Telegram without SMS delays.
+          </p>
+
+          <!-- State: Disconnected -->
+          <div id="tg-disconnected-view" style="display: none;">
+            <div style="background: var(--bg-2); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+              <div>
+                <div style="font-size: 14px; font-weight: 500; color: var(--text-1);">Connect VYZN Security Bot</div>
+                <div style="font-size: 12px; color: var(--text-3); margin-top: 2px;">Official bot: <strong>@Vyzn_security_alert_bot</strong></div>
+              </div>
+              <button type="button" class="btn btn-primary" id="btn-connect-telegram">
+                Connect VYZN Telegram
+              </button>
+            </div>
+
+            <!-- Deep Link & Instructions Drawer -->
+            <div id="tg-connect-drawer" style="display: none; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px; padding: 16px; margin-top: 12px;">
+              <div style="font-size: 13px; font-weight: 600; color: var(--text-1); margin-bottom: 8px;">Steps to complete connection:</div>
+              <ol style="font-size: 13px; color: var(--text-2); margin: 0 0 14px 18px; padding: 0; line-height: 1.6;">
+                <li>Click the button below to open <strong>@Vyzn_security_alert_bot</strong> in Telegram.</li>
+                <li>Tap <strong>Start</strong> in Telegram to link your account.</li>
+                <li>This card will automatically update once connected!</li>
+              </ol>
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <a id="tg-open-deep-link" href="#" target="_blank" rel="noopener" class="btn btn-primary" style="text-decoration: none;">
+                  ✈️ Open Telegram Bot
+                </a>
+                <span style="font-size: 12px; color: var(--text-3);" id="tg-polling-indicator">Waiting for Telegram /start…</span>
+                <button type="button" id="tg-test-simulate-btn" class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;">Simulate Start (Test)</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- State: Connected -->
+          <div id="tg-connected-view" style="display: none;">
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Connected Telegram Account</div>
+                <div class="settings-sublabel">Receives real-time camera screenshots</div>
+              </div>
+              <div class="settings-value" id="val-tg-username">@username</div>
+            </div>
+
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">CCTV Threat Notifications</div>
+                <div class="settings-sublabel" id="lbl-tg-alert-sublabel">Real-time alerts and screenshots are active</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <button type="button" class="btn btn-secondary" id="btn-toggle-tg-alerts" style="min-width: 110px;">
+                  Mute Alerts
+                </button>
+              </div>
+            </div>
+
+            <div class="settings-row" style="padding-top: 14px;">
+              <div>
+                <div class="settings-label">Actions & Testing</div>
+                <div class="settings-sublabel">Verify delivery or unlink your Telegram account</div>
+              </div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" class="btn btn-secondary" id="btn-test-tg-alert">
+                  Send Test Alert
+                </button>
+                <button type="button" class="btn btn-secondary" id="btn-disconnect-telegram" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);">
+                  Disconnect
+                </button>
+              </div>
+            </div>
+          <!-- Telegram Bot Token Configuration from BotFather -->
+          <!-- In simple terms: paste the token given by Telegram's @BotFather so the server can talk to Telegram -->
+          <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-subtle);">
+            <div style="font-size: 13px; font-weight: 500; color: var(--text-1); margin-bottom: 4px;">Telegram Bot Token (@BotFather)</div>
+            <div style="font-size: 12px; color: var(--text-3); margin-bottom: 8px;">Enter your Telegram Bot Token to activate the long-polling dispatcher for instant notifications.</div>
+            <div class="settings-input-wrap">
+              <input type="password" class="settings-input" id="input-tg-bot-token" placeholder="Paste bot token (e.g. 123456789:ABCdef...)" autocomplete="off">
+              <button type="button" class="btn btn-secondary" id="btn-save-tg-bot-token">Save Token</button>
+            </div>
+            <div id="tg-token-feedback" style="font-size: 12px; margin-top: 6px; display: none;"></div>
+          </div>
+
+          <div id="tg-feedback" style="font-size: 12px; margin-top: 10px; display: none;"></div>
+        </section>
+
+        <!-- Business Hours & Operating Schedule -->
+        <!-- In simple terms: lets the user set their business opening and closing times -->
+        <section class="settings-card" aria-labelledby="card-bh-title">
+          <div class="settings-card-header">
+            <h3 class="settings-card-title" id="card-bh-title">
+              <span>🕒</span> Business Hours & Schedule
+            </h3>
+            <span class="settings-badge info" id="bh-status-badge">Active</span>
+          </div>
+
+          <p style="font-size: 13px; color: var(--text-2); margin: 0 0 16px 0; line-height: 1.5;">
+            Configure your shop or society operating hours. During operating hours, routine customer visits are reviewed normally. Outside these hours (after-hours), unexpected intrusions trigger elevated alerts.
+          </p>
+
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Enforce Business Hours</div>
+              <div class="settings-sublabel">Enable after-hours threat monitoring when premises is closed</div>
+            </div>
+            <div>
+              <input type="checkbox" id="cb-bh-enabled" checked style="width: 18px; height: 18px; cursor: pointer;">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px;">
+            <div>
+              <label class="settings-label" for="input-bh-start" style="display: block; margin-bottom: 6px;">Opening Time</label>
+              <input type="time" class="settings-input" id="input-bh-start" value="09:00" style="width: 100%;">
+            </div>
+            <div>
+              <label class="settings-label" for="input-bh-end" style="display: block; margin-bottom: 6px;">Closing Time</label>
+              <input type="time" class="settings-input" id="input-bh-end" value="21:00" style="width: 100%;">
+            </div>
+          </div>
+
+          <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 12px; color: var(--text-3);">Standard: <strong>09:00 AM – 09:00 PM</strong></span>
+            <button type="button" class="btn btn-primary" id="btn-save-bh">Save Business Hours</button>
+          </div>
+          <div id="bh-feedback" style="font-size: 12px; margin-top: 8px; display: none;"></div>
+        </section>
+
+        <!-- 4. Appearance & Theme -->
+        <section class="settings-card" aria-labelledby="card-theme-title">
+          <div class="settings-card-header">
+            <h3 class="settings-card-title" id="card-theme-title">
+              <span>🎨</span> Appearance & Theme
+            </h3>
+          </div>
+
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Interface Theme</div>
+              <div class="settings-sublabel">Select preferred color scheme for dashboard</div>
+            </div>
+            <div class="theme-toggle-group" id="theme-segmented-group">
+              <button type="button" class="theme-toggle-btn" data-theme-val="dark">Dark</button>
+              <button type="button" class="theme-toggle-btn" data-theme-val="light">Light</button>
+              <button type="button" class="theme-toggle-btn" data-theme-val="system">System</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. Critical Action Security Gate (Security PIN) -->
+        <section class="settings-card" aria-labelledby="card-sec-title">
+          <div class="settings-card-header">
+            <h3 class="settings-card-title" id="card-sec-title">
+              <span>🔐</span> Extra Security Gate (6-Digit PIN)
+            </h3>
+            <span class="settings-badge success">Enforced</span>
+          </div>
+
+          <p style="font-size: 13px; color: var(--text-2); margin: 0 0 16px 0; line-height: 1.5;">
+            To protect your store and evidence, destructive and administrative operations (<strong>adding cameras</strong>, <strong>deleting cameras</strong>, and <strong>deleting video clips</strong>) require confirmation with your 6-digit Security PIN.
+          </p>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div>
+              <label class="settings-label" for="input-current-pin" style="display: block; margin-bottom: 6px;">Current PIN</label>
+              <input type="password" class="settings-input" id="input-current-pin" placeholder="Default: 202600" maxlength="8" inputmode="numeric" style="width: 100%;">
+            </div>
+            <div>
+              <label class="settings-label" for="input-new-pin" style="display: block; margin-bottom: 6px;">New 6-Digit PIN</label>
+              <input type="password" class="settings-input" id="input-new-pin" placeholder="e.g. 583921" maxlength="8" inputmode="numeric" style="width: 100%;">
+            </div>
+          </div>
+
+          <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 12px; color: var(--text-3);">Default factory PIN: <strong>202600</strong></span>
+            <button type="button" class="btn btn-secondary" id="btn-update-pin">Update Security PIN</button>
+          </div>
+          <div id="pin-feedback" style="font-size: 12px; margin-top: 8px; display: none;"></div>
+        </section>
+
+        <!-- 5. Storage Space Folder & Safe Video Retention -->
+        <section class="settings-card" aria-labelledby="card-purge-title">
+          <div class="settings-card-header">
+            <h3 class="settings-card-title" id="card-purge-title">
+              <span>💾</span> Storage Space & Video Footages Folder
+            </h3>
+            <span class="settings-badge success" id="storage-status-badge">Active</span>
+          </div>
+
+          <div class="purge-guarantee-box">
+            <span style="font-size: 20px;">🛡️</span>
+            <div>
+              <strong>Crash-Resistant Storage Protection:</strong> All continuous video footages, camera recordings, and incident clips are stored in this dedicated directory. Your recordings are permanently protected and will <strong>never</strong> be removed or wiped on system errors or restarts.
+            </div>
+          </div>
+
+          <!-- Configurable Storage Space Folder Input -->
+          <div style="margin-top: 16px;">
+            <label class="settings-label" for="input-storage-folder" style="display: block; margin-bottom: 6px;">
+              Video & Clips Storage Directory
+            </label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <input type="text" class="settings-input" id="input-storage-folder" placeholder="e.g. C:\VyznFootage or D:\Recordings" style="flex: 1; min-width: 260px; font-family: var(--font-mono, monospace);">
+              <input type="file" id="input-folder-picker" webkitdirectory directory style="display: none;">
+              <button type="button" class="btn btn-secondary" id="btn-browse-folder" style="white-space: nowrap;">📁 Choose Folder</button>
+              <button type="button" class="btn btn-primary" id="btn-save-storage" style="white-space: nowrap;">Save Storage Folder</button>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center;">
+              <span style="font-size: 11px; color: var(--text-muted, #94a3b8);">Quick presets:</span>
+              <button type="button" class="btn-preset-path btn btn-xs" data-path="C:\VyznFootage" style="font-size: 11px; padding: 2px 8px; cursor: pointer; border: 1px solid var(--border-color, #334155); background: transparent; color: var(--text-color, #e2e8f0); border-radius: 4px;">C:\VyznFootage</button>
+              <button type="button" class="btn-preset-path btn btn-xs" data-path="D:\VyznFootage" style="font-size: 11px; padding: 2px 8px; cursor: pointer; border: 1px solid var(--border-color, #334155); background: transparent; color: var(--text-color, #e2e8f0); border-radius: 4px;">D:\VyznFootage</button>
+              <button type="button" class="btn-preset-path btn btn-xs" data-path="C:\Vyzn testing data" style="font-size: 11px; padding: 2px 8px; cursor: pointer; border: 1px solid var(--border-color, #334155); background: transparent; color: var(--text-color, #e2e8f0); border-radius: 4px;">C:\Vyzn testing data</button>
+            </div>
+            <div id="storage-feedback" style="font-size: 12px; margin-top: 6px; display: none;"></div>
+          </div>
+
+          <div class="settings-row" style="margin-top: 16px;">
+            <div>
+              <div class="settings-label">Active Storage Folder</div>
+              <div class="settings-sublabel">Full path on disk where camera 1 & clips are written</div>
+            </div>
+            <div class="settings-value" id="val-storage-path" style="font-size: 12px; word-break: break-all;">Loading…</div>
+          </div>
+
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Disk Space Available</div>
+              <div class="settings-sublabel">Headroom on selected storage partition</div>
+            </div>
+            <div class="settings-value" id="val-disk-free">Calculating…</div>
+          </div>
+
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Total Preserved Clips</div>
+              <div class="settings-sublabel">Verified video evidence events safely stored</div>
+            </div>
+            <div class="settings-value" id="val-clips-stored">—</div>
+          </div>
+
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Ring Buffer Maximum Retention</div>
+              <div class="settings-sublabel">Standard retention period before automatic cleanup</div>
+            </div>
+            <div class="settings-value">72 hours</div>
+          </div>
+
+          <div class="settings-row" style="border-top: 1px dashed var(--border, rgba(255,255,255,0.08)); padding-top: 14px; margin-top: 14px;">
+            <div>
+              <div class="settings-label" style="color: var(--alert, #ef4444);">Purge Previous Clips</div>
+              <div class="settings-sublabel">Delete all historical clips and test footages from database & disk</div>
+            </div>
+            <div>
+              <button type="button" class="btn btn-secondary" id="btn-purge-all-clips" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);">
+                🗑️ Delete All Previous Clips
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <div id="app-bottom-nav"></div>
+  </div>
+
+  <div id="toast-notification" class="toast-msg"></div>
+
+  <script type="module" src="/static/settings.js"></script>
+</body>
+</html>
