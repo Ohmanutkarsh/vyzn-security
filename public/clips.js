@@ -472,3 +472,19 @@ function checkDeepLink() {
     openClipDrawer(params.get('open'), loadedClips);
   }
 }
+
+export async function initClipsPage() {
+  await initI18n();
+  initShell({ activePage: 'clips' });
+  initClipDrawer({ onClipUpdated: () => loadClips() });
+
+  const titleEl = document.getElementById('page-title-text');
+  if (titleEl) titleEl.textContent = 'Clips';
+
+  await loadCamerasList();
+  readFiltersFromUrl();
+  bindFilterEvents();
+  await loadClips();
+  attachPurgeHandler();
+  checkDeepLink();
+}

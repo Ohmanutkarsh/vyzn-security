@@ -173,7 +173,7 @@ function renderPicker(container, cameras) {
           <div class="camera-tile" style="display:flex; flex-direction:column; justify-content:space-between;">
             <div>
               <div class="tile-thumbnail-frame" style="position:relative; width:100%; aspect-ratio:16/9; background:var(--video-bg); border-radius:var(--radius-interactive); overflow:hidden;">
-                <img src="${edgeBaseUrl ? `${edgeBaseUrl}/api/cameras/${c.id}/snapshot.jpg?t=${Date.now()}` : (c.snapshot_url || `/api/cameras/${c.id}/snapshot.jpg?t=${Date.now()}`)}" alt="${escapeHtml(c.name)}" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='/static/img/offline-placeholder.png';">
+                <img src="${localStorage.getItem('vyzn_cam_thumb_' + c.id) || localStorage.getItem('vyzn_cam_thumb_default') || (edgeBaseUrl ? `${edgeBaseUrl}/api/cameras/${c.id}/snapshot.jpg?t=${Date.now()}` : (c.snapshot_url || `/api/cameras/${c.id}/snapshot.jpg?t=${Date.now()}`))}" alt="${escapeHtml(c.name)}" style="width:100%; height:100%; object-fit:cover;" onerror="const c = localStorage.getItem('vyzn_cam_thumb_' + '${c.id}') || localStorage.getItem('vyzn_cam_thumb_default'); if (c && this.src !== c) { this.src = c; } else { this.src='/static/img/offline-placeholder.png'; }">
               </div>
               <div style="margin-top:12px;">
                 <div style="display:flex; align-items:center; justify-content:space-between;">
@@ -261,9 +261,93 @@ async function renderEditor(container, cameraId) {
     buildEditorDom(container);
     attachCanvasInteractions();
     renderAll();
+    captureLiveCameraSnapshot(cameraId);
   } catch (err) {
     container.innerHTML = `<div class="empty-state"><p class="empty-state-text">Failed to load watch areas: ${escapeHtml(err.message)}</p></div>`;
   }
+}
+
+
+async function captureLiveCameraSnapshot(camId) {
+  const img = document.getElementById('canvas-img');
+  let activeStream = window.__vyzn_webcam_stream;
+  let tempStream = null;
+
+  if (!activeStream || !activeStream.active || activeStream.getVideoTracks().length === 0) {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        tempStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+        activeStream = tempStream;
+        window.__vyzn_webcam_stream = tempStream;
+      } catch (err) {
+        console.warn('Could not acquire direct camera stream for areas snapshot:', err);
+      }
+    }
+  }
+
+  if (activeStream && activeStream.active) {
+    try {
+      const offVideo = document.createElement('video');
+      offVideo.muted = true;
+      offVideo.playsInline = true;
+      offVideo.srcObject = activeStream;
+      await offVideo.play();
+      await new Promise(r => setTimeout(r, 200));
+
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = offVideo.videoWidth || 1280;
+      offCanvas.height = offVideo.videoHeight || 720;
+      const ctx = offCanvas.getContext('2d');
+      ctx.drawImage(offVideo, 0, 0, offCanvas.width, offCanvas.height);
+      const dataUrl = offCanvas.toDataURL('image/jpeg', 0.88);
+
+      offVideo.srcObject = null;
+
+      if (img) img.src = dataUrl;
+      try {
+        localStorage.setItem('vyzn_cam_thumb_' + camId, dataUrl);
+        localStorage.setItem('vyzn_cam_thumb_default', dataUrl);
+      } catch (_) {}
+
+      fetch(`/api/cameras/${camId}/snapshot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preview_base64: dataUrl, image_base64: dataUrl })
+      }).catch(() => {});
+
+      if (edgeBaseUrl) {
+        fetch(`${edgeBaseUrl}/api/cameras/${camId}/snapshot`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          mode: 'cors',
+          body: JSON.stringify({ preview_base64: dataUrl, image_base64: dataUrl })
+        }).catch(() => {});
+      }
+
+      return dataUrl;
+    } catch (e) {
+      console.warn('Error capturing live frame in areas:', e);
+    }
+  }
+
+  const cached = localStorage.getItem('vyzn_cam_thumb_' + camId) || localStorage.getItem('vyzn_cam_thumb_default');
+  if (cached && img) {
+    img.src = cached;
+    fetch(`/api/cameras/${camId}/snapshot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preview_base64: cached, image_base64: cached })
+    }).catch(() => {});
+    return cached;
+  }
+
+  if (img) {
+    img.src = `${edgeBaseUrl || ''}/api/cameras/${camId}/snapshot.jpg?t=${Date.now()}`;
+  }
+  return null;
 }
 
 function buildEditorDom(container) {
@@ -300,7 +384,7 @@ function buildEditorDom(container) {
       <!-- Left Column: Video Frame & SVG Overlay Canvas -->
       <div class="areas-canvas-column">
         <div class="areas-canvas-container" id="canvas-container">
-          <img class="areas-canvas-img" id="canvas-img" src="${edgeBaseUrl || ''}/api/cameras/${currentCameraId}/snapshot.jpg?t=${Date.now()}" alt="${escapeHtml(camName)}">
+          <img class="areas-canvas-img" id="canvas-img" src="${localStorage.getItem('vyzn_cam_thumb_' + currentCameraId) || localStorage.getItem('vyzn_cam_thumb_default') || (edgeBaseUrl ? `${edgeBaseUrl}/api/cameras/${currentCameraId}/snapshot.jpg?t=${Date.now()}` : `/api/cameras/${currentCameraId}/snapshot.jpg?t=${Date.now()}`)}" alt="${escapeHtml(camName)}" onerror="const c = localStorage.getItem('vyzn_cam_thumb_' + '${currentCameraId}') || localStorage.getItem('vyzn_cam_thumb_default'); if (c && this.src !== c) this.src = c;">
           <svg class="areas-canvas-svg" id="canvas-svg" viewBox="0 0 ${SVG_W} ${SVG_H}" preserveAspectRatio="none">
             <!-- Scrim Fill (Even-Odd) -->
             <path class="scrim-fill" id="svg-scrim" d="M 0 0 H ${SVG_W} V ${SVG_H} H 0 Z"></path>
@@ -493,27 +577,23 @@ function attachSidebarEventListeners() {
   if (btnUpdatePic) {
     btnUpdatePic.onclick = async () => {
       const txt = document.getElementById('btn-update-picture-txt');
-      if (txt) txt.textContent = t('areas.updating_picture', 'Updating picture…');
+      if (txt) txt.textContent = t('areas.updating_picture', 'Updating picture...');
       btnUpdatePic.disabled = true;
       try {
-        await fetch(`/api/cameras/${currentCameraId}/snapshot`, { method: 'POST' });
-        if (edgeBaseUrl) {
-          await fetch(`${edgeBaseUrl}/api/cameras/${currentCameraId}/snapshot`, { method: 'POST' }).catch(() => {});
-        }
-        const img = document.getElementById('canvas-img');
-        if (img) img.src = `${edgeBaseUrl || ''}/api/cameras/${currentCameraId}/snapshot.jpg?t=${Date.now()}`;
+        await captureLiveCameraSnapshot(currentCameraId);
         const now = new Date();
         pictureTimestamp = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
         const stampEl = document.getElementById('txt-picture-timestamp');
         if (stampEl) stampEl.textContent = `Picture from ${pictureTimestamp}`;
-        showToast('Picture updated.');
+        showToast('Picture updated from live camera.');
       } catch (err) {
-        showToast('Failed to refresh picture: ' + err.message);
+        showToast('Failed to update picture: ' + err.message, true);
       } finally {
         if (txt) txt.textContent = t('areas.update_picture', 'Update picture');
         btnUpdatePic.disabled = false;
       }
     };
+  };
   }
 
   // Periodic background refresh of canvas-img every 10 seconds if user is not actively drawing
@@ -1505,3 +1585,10 @@ window.setAreaDwell = setAreaDwell;
 window.setAreaSchedule = setAreaSchedule;
 window.saveWatchAreas = saveWatchAreas;
 window.getWatchAreas = () => watchAreas;
+
+
+export async function initAreasPage() {
+  await initI18n();
+  initShell({ activePage: 'areas' });
+  await initAreas();
+}

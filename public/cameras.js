@@ -296,3 +296,14 @@ function refreshSnapshots() {
     }
   });
 }
+
+export async function initCamerasPage() {
+  await initI18n();
+  initShell({ activePage: 'cameras' });
+
+  const titleEl = document.getElementById('page-title-text');
+  if (titleEl) titleEl.textContent = t('cameras.page_title', 'Cameras');
+
+  await loadCameras();
+  attachEventListeners();
+}

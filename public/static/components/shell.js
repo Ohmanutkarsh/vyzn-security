@@ -181,7 +181,7 @@ function renderBottomNav(activePage) {
   bottomNavContainer.innerHTML = `
     <nav class="shell-bottom-nav" aria-label="Mobile Navigation">
       ${mobileItems.map(item => `
-        <a href="${item.href}" class="bottom-nav-item ${item.id === activePage ? 'is-active' : ''}">
+        <a href="${item.href}" class="bottom-nav-item ${item.id === activePage ? 'is-active' : ''}" data-nav="${item.id}">
           <span class="bottom-icon">${item.icon}</span>
           <span class="bottom-label">${item.label}</span>
         </a>
@@ -191,6 +191,27 @@ function renderBottomNav(activePage) {
 }
 
 function attachShellEvents(user = {}) {
+
+  // Intercept navigation link clicks for 0ms delay SPA section transitions
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('a[data-nav], .sidebar-brand a, .mobile-brand a');
+    if (!link) return;
+    const href = link.getAttribute('href');
+    if (!href || href.startsWith('http') || href.startsWith('//') || href.startsWith('#') || href.startsWith('mailto:')) return;
+
+    if (window.location.pathname === href) {
+      e.preventDefault();
+      return;
+    }
+
+    e.preventDefault();
+    navigateTo(href);
+  });
+
+  window.addEventListener('popstate', () => {
+    navigateTo(window.location.pathname, false);
+  });
+
   // Theme Switching
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
   updateThemeButtons(currentTheme);
@@ -395,4 +416,74 @@ export function promptSecurityPin({
       });
     }
   });
+}
+
+
+export async function navigateTo(url, pushState = true) {
+  if (pushState) {
+    history.pushState(null, '', url);
+  }
+
+  const cleanPath = url.replace(/^\//, '').split('/')[0] || 'overview';
+
+  // Highlight active nav items
+  document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(el => {
+    el.classList.toggle('is-active', el.getAttribute('data-nav') === cleanPath);
+  });
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      window.location.href = url;
+      return;
+    }
+    const htmlText = await res.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlText, 'text/html');
+
+    if (doc.title) {
+      document.title = doc.title;
+    }
+
+    const titleEl = document.getElementById('page-title-text');
+    if (titleEl) {
+      const pageNames = {
+        overview: 'Overview',
+        clips: 'Clips',
+        areas: 'Areas',
+        cameras: 'Cameras',
+        settings: 'Settings'
+      };
+      titleEl.textContent = pageNames[cleanPath] || 'VYZN';
+    }
+
+    const newMain = doc.querySelector('#main-content');
+    const curMain = document.getElementById('main-content');
+    if (newMain && curMain) {
+      curMain.innerHTML = newMain.innerHTML;
+    }
+
+    window.scrollTo({ top: 0, behavior: 'instant' });
+
+    // Dynamically load page module and initialize
+    if (cleanPath === 'overview') {
+      const mod = await import(`/static/overview.js?v=${Date.now()}`);
+      if (mod.initOverviewPage) await mod.initOverviewPage();
+    } else if (cleanPath === 'clips') {
+      const mod = await import(`/static/clips.js?v=${Date.now()}`);
+      if (mod.initClipsPage) await mod.initClipsPage();
+    } else if (cleanPath === 'areas') {
+      const mod = await import(`/static/areas.js?v=${Date.now()}`);
+      if (mod.initAreasPage) await mod.initAreasPage();
+    } else if (cleanPath === 'cameras') {
+      const mod = await import(`/static/cameras.js?v=${Date.now()}`);
+      if (mod.initCamerasPage) await mod.initCamerasPage();
+    } else if (cleanPath === 'settings') {
+      const mod = await import(`/static/settings.js?v=${Date.now()}`);
+      if (mod.initSettingsPage) await mod.initSettingsPage();
+    }
+  } catch (err) {
+    console.warn('SPA navigation failed, falling back to full reload:', err);
+    window.location.href = url;
+  }
 }

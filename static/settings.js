@@ -727,7 +727,16 @@ async function initStorageControls() {
             : 'Available';
         }
         if (valClips) {
-          valClips.textContent = `${data.clips_count || 0} clips (Safe & Preserved)`;
+          let realCount = data.clips_count || 0;
+          try {
+            const cRes = await fetch('/api/clips', { credentials: 'include' });
+            if (cRes.ok) {
+              const cData = await cRes.json();
+              if (Array.isArray(cData)) realCount = cData.length;
+              else if (Array.isArray(cData.clips)) realCount = cData.clips.length;
+            }
+          } catch (_) {}
+          valClips.textContent = `${realCount} clips (Safe & Preserved)`;
         }
         if (badge) {
           const isWritable = data.is_writable !== false;
@@ -759,6 +768,26 @@ async function initStorageControls() {
       if (feedback) feedback.style.display = 'none';
 
       try {
+        if (window.showDirectoryPicker) {
+          try {
+            const handle = await window.showDirectoryPicker();
+            if (handle && handle.name) {
+              const currentVal = inputFolder ? inputFolder.value.trim() : '';
+              let targetPath = `C:\\${handle.name}`;
+              if (currentVal && (currentVal.startsWith('D:') || currentVal.startsWith('E:'))) {
+                targetPath = `${currentVal.substring(0, 2)}\\${handle.name}`;
+              }
+              if (inputFolder) inputFolder.value = targetPath;
+              try { localStorage.setItem('vyzn_storage_folder', targetPath); } catch (_) {}
+              showToast(`Storage folder set to: ${targetPath}`);
+              if (btnSave) btnSave.click();
+              return;
+            }
+          } catch (pickerErr) {
+            if (pickerErr.name === 'AbortError') return;
+          }
+        }
+
         const edge = await checkEdgeServer();
         if (edge) {
           try {
@@ -829,6 +858,26 @@ async function initStorageControls() {
       btnBrowse.textContent = '📁 Opening Explorer…';
 
       try {
+        if (window.showDirectoryPicker) {
+          try {
+            const handle = await window.showDirectoryPicker();
+            if (handle && handle.name) {
+              const currentVal = inputFolder ? inputFolder.value.trim() : '';
+              let targetPath = `C:\\${handle.name}`;
+              if (currentVal && (currentVal.startsWith('D:') || currentVal.startsWith('E:'))) {
+                targetPath = `${currentVal.substring(0, 2)}\\${handle.name}`;
+              }
+              if (inputFolder) inputFolder.value = targetPath;
+              try { localStorage.setItem('vyzn_storage_folder', targetPath); } catch (_) {}
+              showToast(`Storage folder set to: ${targetPath}`);
+              if (btnSave) btnSave.click();
+              return;
+            }
+          } catch (pickerErr) {
+            if (pickerErr.name === 'AbortError') return;
+          }
+        }
+
         const edge = await checkEdgeServer();
         if (edge) {
           try {
@@ -918,6 +967,26 @@ async function initStorageControls() {
       btnPurgeAll.disabled = true;
       btnPurgeAll.textContent = 'Purging clips…';
       try {
+        if (window.showDirectoryPicker) {
+          try {
+            const handle = await window.showDirectoryPicker();
+            if (handle && handle.name) {
+              const currentVal = inputFolder ? inputFolder.value.trim() : '';
+              let targetPath = `C:\\${handle.name}`;
+              if (currentVal && (currentVal.startsWith('D:') || currentVal.startsWith('E:'))) {
+                targetPath = `${currentVal.substring(0, 2)}\\${handle.name}`;
+              }
+              if (inputFolder) inputFolder.value = targetPath;
+              try { localStorage.setItem('vyzn_storage_folder', targetPath); } catch (_) {}
+              showToast(`Storage folder set to: ${targetPath}`);
+              if (btnSave) btnSave.click();
+              return;
+            }
+          } catch (pickerErr) {
+            if (pickerErr.name === 'AbortError') return;
+          }
+        }
+
         const edge = await checkEdgeServer();
         if (edge) {
           try {
@@ -954,3 +1023,16 @@ async function initStorageControls() {
 
 
 
+
+
+export async function initSettingsPage() {
+  await initI18n();
+  initShell({ activePage: 'settings' });
+  await initAccountDetails();
+  initThemeControls();
+  await initPhoneControls();
+  await initSecurityControls();
+  await initTelegramControls();
+  await initBusinessHoursControls();
+  await initStorageControls();
+}
