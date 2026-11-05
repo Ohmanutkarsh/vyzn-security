@@ -266,7 +266,8 @@ function attachShellEvents(user = {}) {
   if (wallBtn) {
     wallBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      openWallView();
+      const cams = (window.__vyzn_cameras && Array.isArray(window.__vyzn_cameras)) ? window.__vyzn_cameras : [];
+      openWallView(cams);
     });
   }
 
@@ -420,16 +421,33 @@ export function promptSecurityPin({
 
 
 export async function navigateTo(url, pushState = true) {
+  // If active browser event clipping is recording in overview, flush and save immediately
+  if (typeof window.flushAndFinalizeActiveClip === 'function') {
+    try {
+      window.flushAndFinalizeActiveClip();
+    } catch (_) {}
+  }
+
   if (pushState) {
     history.pushState(null, '', url);
   }
 
   const cleanPath = url.replace(/^\//, '').split('/')[0] || 'overview';
 
-  // Highlight active nav items
+  // Highlight active nav items across sidebar and bottom bar
   document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(el => {
     el.classList.toggle('is-active', el.getAttribute('data-nav') === cleanPath);
   });
+
+  // Ensure sidebar is present and rendered
+  const sidebarContainer = document.getElementById('app-sidebar');
+  if (sidebarContainer && !sidebarContainer.innerHTML.trim()) {
+    try {
+      const cached = localStorage.getItem('vyzn_user');
+      const u = cached ? JSON.parse(cached) : {};
+      renderSidebar(cleanPath, u);
+    } catch (_) {}
+  }
 
   try {
     const res = await fetch(url);

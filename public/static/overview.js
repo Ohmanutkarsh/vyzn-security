@@ -14,8 +14,6 @@ import { t, initI18n } from './i18n.js';
 
 import { escapeHtml } from './utils.js';
 
-
-
 let camerasList = [];
 
 let activeCameraId = null;
@@ -32,85 +30,23 @@ let flagsData = [];
 
 let cameraSearchQuery = '';
 
+// Tab visibility disconnect handler per Section 6.2 & Ground Rules
+document.addEventListener('visibilitychange', handleVisibilityChange);
 
-
-document.addEventListener('DOMContentLoaded', async () => {
-
-  const searchInput = document.getElementById('camera-search-input');
-
-  if (searchInput) {
-
-    searchInput.addEventListener('input', (e) => {
-
-      cameraSearchQuery = (e.target.value || '').trim().toLowerCase();
-
-      renderPicker();
-
-      renderStrip();
-
-    });
-
+// Keyboard shortcut F to toggle Wall View
+window.addEventListener('keydown', (e) => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
+  if (e.key === 'f' || e.key === 'F') {
+    e.preventDefault();
+    openWallView(camerasList);
   }
-
-  await initI18n();
-
-  initShell({ activePage: 'overview' });
-
-  initClipDrawer({ onClipUpdated: () => loadFlags() });
-
-
-
-  const titleEl = document.getElementById('page-title-text');
-
-  if (titleEl) titleEl.textContent = 'Overview';
-
-
-
-  await loadOverviewData();
-
-  await loadFlags();
-
-  initSSE();
-
-  attachPlayerControls();
-
-
-
-  // Tab visibility disconnect handler per Section 6.2 & Ground Rules
-
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-
-
-
-  // Keyboard shortcut F to toggle Wall View
-
-  window.addEventListener('keydown', (e) => {
-
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
-
-    if (e.key === 'f' || e.key === 'F') {
-
-      e.preventDefault();
-
-      openWallView(camerasList);
-
-    }
-
-  });
-
-
-
-  // Periodic snapshot refresh for non-active camera tiles in strip
-
-  setInterval(refreshStripSnapshots, 8000);
-
-  // Periodic real-time snapshot capture from active stream to update strip and cloud
-
-  setInterval(captureAndUploadActiveSnapshot, 5000);
-
 });
 
+// Periodic snapshot refresh for non-active camera tiles in strip
+setInterval(refreshStripSnapshots, 8000);
 
+// Periodic real-time snapshot capture from active stream to update strip and cloud
+setInterval(captureAndUploadActiveSnapshot, 5000);
 
 async function loadOverviewData() {
 
@@ -119,8 +55,6 @@ async function loadOverviewData() {
   const activeContent = document.getElementById('overview-active-content');
 
   const wallBtn = document.getElementById('btn-wall-view');
-
-
 
   try {
 
@@ -139,8 +73,6 @@ async function loadOverviewData() {
     if (!res.ok) throw new Error('Failed to load cameras');
 
     camerasList = await res.json();
-
-
 
     // If cloud returned empty list but local edge server is online, fallback to edge cameras
 
@@ -170,8 +102,6 @@ async function loadOverviewData() {
 
     }
 
-
-
     if (!camerasList || camerasList.length === 0) {
 
       if (emptyState) emptyState.style.display = 'flex';
@@ -190,13 +120,11 @@ async function loadOverviewData() {
 
     }
 
-
-
     if (emptyState) emptyState.style.display = 'none';
 
     if (activeContent) activeContent.style.display = 'block';
 
-
+    window.__vyzn_cameras = camerasList;
 
     // Enable Wall View button with active cameras
 
@@ -210,15 +138,11 @@ async function loadOverviewData() {
 
     }
 
-
-
     // Default to first online camera, or first camera
 
     const onlineCam = camerasList.find(c => c.status === 'online');
 
     activeCameraId = onlineCam ? (onlineCam.id || onlineCam.camera_id) : (camerasList[0].id || camerasList[0].camera_id);
-
-
 
     renderPicker();
 
@@ -240,23 +164,17 @@ async function loadOverviewData() {
 
 }
 
-
-
 function renderPicker() {
 
   const container = document.getElementById('camera-picker-container');
 
   if (!container) return;
 
-
-
   const filtered = cameraSearchQuery
 
     ? camerasList.filter(c => ((c.name || '') + ' ' + (c.id || c.camera_id || '')).toLowerCase().includes(cameraSearchQuery))
 
     : camerasList;
-
-
 
   if (filtered.length === 0) {
 
@@ -265,8 +183,6 @@ function renderPicker() {
     return;
 
   }
-
-
 
   if (filtered.length <= 4) {
 
@@ -295,8 +211,6 @@ function renderPicker() {
       </div>
 
     `;
-
-
 
     container.querySelectorAll('[data-pick-cam]').forEach(btn => {
 
@@ -328,8 +242,6 @@ function renderPicker() {
 
     `;
 
-
-
     const select = document.getElementById('select-camera-picker');
 
     if (select) {
@@ -346,23 +258,17 @@ function renderPicker() {
 
 }
 
-
-
 function renderStrip() {
 
   const strip = document.getElementById('cameras-strip-list');
 
   if (!strip) return;
 
-
-
   const filtered = cameraSearchQuery
 
     ? camerasList.filter(c => ((c.name || '') + ' ' + (c.id || c.camera_id || '')).toLowerCase().includes(cameraSearchQuery))
 
     : camerasList;
-
-
 
   if (filtered.length === 0) {
 
@@ -371,8 +277,6 @@ function renderStrip() {
     return;
 
   }
-
-
 
   strip.innerHTML = filtered.map(c => {
 
@@ -394,8 +298,6 @@ function renderStrip() {
 
   }).join('');
 
-
-
   strip.querySelectorAll('.camera-tile').forEach(tile => {
 
     tile.addEventListener('click', () => {
@@ -410,15 +312,11 @@ function renderStrip() {
 
 }
 
-
-
 let currentStreamTrack = null;
 
 let edgeBaseUrl = null;
 
 let edgeCameras = null;
-
-
 
 async function checkEdgeServer() {
 
@@ -482,8 +380,6 @@ async function checkEdgeServer() {
 
 }
 
-
-
 function stopCurrentWebcamStream() {
 
   if (currentStreamTrack) {
@@ -510,8 +406,6 @@ function stopCurrentWebcamStream() {
 
 }
 
-
-
 async function activateBrowserWebcam(cam, cid) {
 
   const videoEl = document.getElementById('live-stream-video');
@@ -526,15 +420,11 @@ async function activateBrowserWebcam(cam, cid) {
 
   const pulseDot = document.getElementById('live-pulse-dot');
 
-
-
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
 
     return false;
 
   }
-
-
 
   try {
 
@@ -554,8 +444,6 @@ async function activateBrowserWebcam(cam, cid) {
 
     });
 
-
-
     if (activeCameraId !== cid) {
 
       stream.getTracks().forEach(t => t.stop());
@@ -563,8 +451,6 @@ async function activateBrowserWebcam(cam, cid) {
       return false;
 
     }
-
-
 
     currentStreamTrack = stream;
 
@@ -575,8 +461,6 @@ async function activateBrowserWebcam(cam, cid) {
       videoEl.style.display = 'block';
 
       if (streamImg) streamImg.style.display = 'none';
-
-
 
       const markLive = () => {
 
@@ -597,8 +481,6 @@ async function activateBrowserWebcam(cam, cid) {
         }
 
       };
-
-
 
       videoEl.onloadedmetadata = () => {
 
@@ -626,21 +508,15 @@ async function activateBrowserWebcam(cam, cid) {
 
 }
 
-
-
 async function mountOverviewPlayer(cid) {
 
   const mountEl = document.getElementById('overview-live-player-mount');
 
   if (!mountEl) return;
 
-
-
   const cam = camerasList.find(c => (c.id || c.camera_id) === cid) || camerasList[0];
 
   const camName = cam ? cam.name : cid;
-
-
 
   if (activeLivePlayer) {
 
@@ -649,8 +525,6 @@ async function mountOverviewPlayer(cid) {
     activeLivePlayer = null;
 
   }
-
-
 
   activeLivePlayer = await mountLiveCctvPlayer(mountEl, {
 
@@ -671,8 +545,6 @@ async function mountOverviewPlayer(cid) {
     }
 
   });
-
-
 
   // Immediately take frame snapshot on video start and timeupdate
 
@@ -701,13 +573,7 @@ async function mountOverviewPlayer(cid) {
 
   }
 
-
-
-  
-
 }
-
-
 
 function switchActiveCamera(cid) {
 
@@ -733,11 +599,7 @@ function switchActiveCamera(cid) {
 
   }
 
-  
-
 }
-
-
 
 async function startLiveStream(cid) {
 
@@ -745,17 +607,11 @@ async function startLiveStream(cid) {
 
   if (!cam) return;
 
-
-
   stopCurrentWebcamStream();
-
-
 
   const nameEl = document.getElementById('player-camera-name');
 
   if (nameEl) nameEl.textContent = cam.name;
-
-
 
   const streamImg = document.getElementById('live-stream-img');
 
@@ -769,8 +625,6 @@ async function startLiveStream(cid) {
 
   const pulseDot = document.getElementById('live-pulse-dot');
 
-
-
   // Clear previous state
 
   if (connectingOverlay) connectingOverlay.style.display = 'none';
@@ -778,8 +632,6 @@ async function startLiveStream(cid) {
   if (offlineOverlay) offlineOverlay.style.display = 'none';
 
   if (stalledTimer) clearTimeout(stalledTimer);
-
-
 
   // Always start connecting live stream immediately upon entering website
 
@@ -789,23 +641,15 @@ async function startLiveStream(cid) {
 
   if (pulseDot) pulseDot.style.display = 'none';
 
-
-
   if (videoEl) videoEl.style.display = 'none';
 
   if (streamImg) streamImg.style.display = 'block';
-
-
 
   const isWebcam = String(cam.rtsp_url) === '0' || cam.source_type === 'webcam' || (cam.name && cam.name.toLowerCase().includes('webcam'));
 
   const isDirectHttp = cam.rtsp_url && (cam.rtsp_url.startsWith('http://') || cam.rtsp_url.startsWith('https://'));
 
-
-
   const edge = await checkEdgeServer();
-
-
 
   // Find corresponding local edge camera if ID differs (e.g. cloud assigned cam_81559 while local edge has cam_camera_1_...)
 
@@ -827,8 +671,6 @@ async function startLiveStream(cid) {
 
   }
 
-
-
   // If this is a hardware webcam, try direct browser webcam first for zero-latency 20 fps authentic video
 
   if (isWebcam) {
@@ -838,8 +680,6 @@ async function startLiveStream(cid) {
     if (started) return;
 
   }
-
-
 
   const streamCandidates = [];
 
@@ -863,11 +703,7 @@ async function startLiveStream(cid) {
 
   streamCandidates.push(`/api/cameras/${cid}/stream?t=${Date.now()}`);
 
-
-
   let candidateIdx = 0;
-
-
 
   if (streamImg) {
 
@@ -888,8 +724,6 @@ async function startLiveStream(cid) {
           if (started) return;
 
         }
-
-
 
         if (connectingOverlay) connectingOverlay.style.display = 'none';
 
@@ -931,8 +765,6 @@ async function startLiveStream(cid) {
 
     };
 
-
-
     streamImg.onload = () => {
 
       if (connectingOverlay) connectingOverlay.style.display = 'none';
@@ -953,23 +785,17 @@ async function startLiveStream(cid) {
 
     };
 
-
-
     streamImg.onerror = () => {
 
       tryNextCandidate();
 
     };
 
-
-
     tryNextCandidate();
 
   }
 
 }
-
-
 
 function handleVisibilityChange() {
 
@@ -980,8 +806,6 @@ function handleVisibilityChange() {
   }
 
 }
-
-
 
 function attachPlayerControls() {
 
@@ -1008,8 +832,6 @@ function attachPlayerControls() {
     });
 
   }
-
-
 
   // Save picture button
 
@@ -1071,8 +893,6 @@ function attachPlayerControls() {
 
   }
 
-
-
   // Toggle Watch Areas
 
   const btnToggleAreas = document.getElementById('btn-toggle-areas');
@@ -1089,13 +909,9 @@ function attachPlayerControls() {
 
       areasSvg.style.display = showWatchAreas ? 'block' : 'none';
 
-      
-
     });
 
   }
-
-
 
   // Player Retry
 
@@ -1110,8 +926,6 @@ function attachPlayerControls() {
     });
 
   }
-
-
 
   // Why offline button
 
@@ -1129,8 +943,6 @@ function attachPlayerControls() {
 
   }
 
-
-
   const btnCloseTroubleshoot = document.getElementById('btn-close-troubleshooting');
 
   if (btnCloseTroubleshoot && modalTroubleshoot) {
@@ -1145,15 +957,11 @@ function attachPlayerControls() {
 
 }
 
-
-
 async function renderWatchAreasOverlay() {
 
   const areasSvg = document.getElementById('watch-areas-overlay');
 
   if (!areasSvg) return;
-
-
 
   if (!activeCameraId) {
 
@@ -1162,8 +970,6 @@ async function renderWatchAreasOverlay() {
     return;
 
   }
-
-
 
   try {
 
@@ -1177,8 +983,6 @@ async function renderWatchAreasOverlay() {
 
     const areas = (data.areas || []).filter(a => (a.points || a[polyKey]) && (a.points || a[polyKey]).length >= 3);
 
-
-
     const SVG_W = 1000;
 
     const SVG_H = 562.5;
@@ -1186,8 +990,6 @@ async function renderWatchAreasOverlay() {
     areasSvg.setAttribute('viewBox', `0 0 ${SVG_W} ${SVG_H}`);
 
     areasSvg.setAttribute('preserveAspectRatio', 'none');
-
-
 
     if (areas.length === 0) {
 
@@ -1209,15 +1011,11 @@ async function renderWatchAreasOverlay() {
 
     }
 
-
-
     let scrimCutouts = '';
 
     let shapesHtml = '';
 
     let labelsHtml = '';
-
-
 
     areas.forEach((area, idx) => {
 
@@ -1233,13 +1031,9 @@ async function renderWatchAreasOverlay() {
 
       });
 
-
-
       const ptsPath = pts.map(([px, py]) => `${px} ${py}`);
 
       scrimCutouts += `M ${ptsPath[0]} L ${ptsPath.slice(1).join(' L ')} Z `;
-
-
 
       const isAlert = area.response === 'alert';
 
@@ -1247,15 +1041,11 @@ async function renderWatchAreasOverlay() {
 
       const fillColor = isAlert ? 'rgba(59, 130, 246, 0.18)' : 'rgba(16, 185, 129, 0.15)';
 
-
-
       shapesHtml += `
 
         <path d="M ${ptsPath[0]} L ${ptsPath.slice(1).join(' L ')} Z" fill="${fillColor}" stroke="${strokeColor}" stroke-width="2.5" />
 
       `;
-
-
 
       const minX = Math.min(...pts.map(p => p[0]));
 
@@ -1268,8 +1058,6 @@ async function renderWatchAreasOverlay() {
       const text = `${icon} ${name}`;
 
       const textWidth = Math.max(70, text.length * 7 + 16);
-
-
 
       labelsHtml += `
 
@@ -1284,8 +1072,6 @@ async function renderWatchAreasOverlay() {
       `;
 
     });
-
-
 
     areasSvg.innerHTML = `
 
@@ -1317,8 +1103,6 @@ async function renderWatchAreasOverlay() {
 
 }
 
-
-
 async function captureAndUploadActiveSnapshot() {
 
   if (!activeCameraId) return;
@@ -1326,8 +1110,6 @@ async function captureAndUploadActiveSnapshot() {
   const videoEl = document.getElementById('cctv-video') || document.querySelector('video.cctv-video-el') || document.getElementById('live-stream-video') || document.querySelector('video');
 
   const activeTileImg = document.querySelector(`.camera-tile[data-camera-id="${activeCameraId}"] .camera-thumb-img`);
-
-
 
   if (videoEl && videoEl.readyState >= 2 && videoEl.videoWidth > 0) {
 
@@ -1345,8 +1127,6 @@ async function captureAndUploadActiveSnapshot() {
 
       const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
 
-
-
       if (activeTileImg) {
 
         activeTileImg.src = dataUrl;
@@ -1359,8 +1139,6 @@ async function captureAndUploadActiveSnapshot() {
 
       } catch (_) {}
 
-
-
       fetch(`/api/cameras/${encodeURIComponent(activeCameraId)}/snapshot`, {
 
         method: 'POST',
@@ -1370,8 +1148,6 @@ async function captureAndUploadActiveSnapshot() {
         body: JSON.stringify({ preview_base64: dataUrl })
 
       }).catch(() => {});
-
-
 
       if (edgeBaseUrl) {
 
@@ -1404,8 +1180,6 @@ async function captureAndUploadActiveSnapshot() {
   }
 
 }
-
-
 
 function refreshStripSnapshots() {
 
@@ -1445,8 +1219,6 @@ function refreshStripSnapshots() {
 
 }
 
-
-
 /**
 
  * Loads unreviewed flags from /api/clips/flags and updates the Overview panel.
@@ -1465,11 +1237,7 @@ async function loadFlags() {
 
   const footerLink = document.getElementById('flags-see-all-link');
 
-
-
   if (!container) return;
-
-
 
   try {
 
@@ -1523,8 +1291,6 @@ async function loadFlags() {
 
     }
 
-
-
     if (!data) {
 
       const res = await fetch('/api/clips/flags?limit=10', { credentials: 'include' });
@@ -1534,8 +1300,6 @@ async function loadFlags() {
       data = await res.json();
 
     }
-
-
 
     flagsData = data.flags || [];
 
@@ -1569,17 +1333,11 @@ async function loadFlags() {
 
     }
 
-
-
     const totalWaiting = data.totalWaiting !== undefined ? data.totalWaiting : flagsData.length;
 
     const expiringSoon = data.expiringSoonCount || 0;
 
-
-
     if (title) title.textContent = `Flags · ${totalWaiting} waiting`;
-
-
 
     if (flagsData.length === 0) {
 
@@ -1601,19 +1359,13 @@ async function loadFlags() {
 
     }
 
-
-
     // Max 5 desktop, max 3 mobile
 
     const maxShow = window.innerWidth < 1024 ? 3 : 5;
 
     const visibleFlags = flagsData.slice(0, maxShow);
 
-
-
     container.innerHTML = visibleFlags.map(clip => renderFlagRow({ clip })).join('');
-
-
 
     // Attach row open and dismiss handlers
 
@@ -1622,8 +1374,6 @@ async function loadFlags() {
       const cid = row.getAttribute('data-clip-id');
 
       const clip = flagsData.find(c => c.id === cid);
-
-
 
       row.addEventListener('click', (e) => {
 
@@ -1659,8 +1409,6 @@ async function loadFlags() {
 
     });
 
-
-
     // 12-hour expiry warning banner per Section 6.2
 
     if (expiringSoon > 0 && expiryBanner && expiryText) {
@@ -1674,8 +1422,6 @@ async function loadFlags() {
       expiryBanner.style.display = 'none';
 
     }
-
-
 
     // Footer link
 
@@ -1700,8 +1446,6 @@ async function loadFlags() {
   }
 
 }
-
-
 
 /**
 
@@ -1736,8 +1480,6 @@ function initSSE() {
   }
 
 }
-
-
 
 // ==============================================================================
 // VYZN CLIENT-SIDE LIVE MOTION SCORING & EVENT STATE MACHINE (Browser / Edge)
@@ -1910,8 +1652,8 @@ function startBrowserLiveSecurityMonitor(cameraId, cameraName) {
           tickScore = 14;
           matchedResp = 'outside_ignored';
         } else {
-          // No watch areas configured -> Standard whole-view activity
-          tickScore = 42;
+          // No watch areas configured -> Active motion triggers standard alert tier
+          tickScore = 78;
           matchedResp = 'general';
         }
       } else {
@@ -1983,8 +1725,8 @@ function startBrowserLiveSecurityMonitor(cameraId, cameraName) {
           }
         } else {
           smQuietTicks++;
-          // Close clip when quiet ticks stay < 30 for 90 seconds (30 ticks * 3s = 90s)
-          if (smQuietTicks >= 30) {
+          // Close clip when quiet ticks stay < 30 (close promptly after 2 quiet ticks = 6s of silence so test clips are never lost)
+          if (smQuietTicks >= 2) {
             smState = 'IDLE';
             showLiveRecordingIndicator(false);
 
@@ -2097,7 +1839,38 @@ async function finalizeAndUploadClip(cid, camName, areaName, score, startMs, end
   }
 }
 
+window.flushAndFinalizeActiveClip = function() {
+  if (smState === 'ACTIVE') {
+    smState = 'IDLE';
+    showLiveRecordingIndicator(false);
+    if (smMediaRecorder && smMediaRecorder.state !== 'inactive') {
+      smMediaRecorder.onstop = () => {
+        const clipBlob = new Blob(smRecordedBlobs, { type: 'video/webm' });
+        finalizeAndUploadClip(currentMonitorCameraId, 'Camera', smMatchedAreaName, smPeakScore, smFirstActiveTime, Date.now(), smPeakPoster, clipBlob);
+      };
+      smMediaRecorder.stop();
+    } else {
+      finalizeAndUploadClip(currentMonitorCameraId, 'Camera', smMatchedAreaName, smPeakScore, smFirstActiveTime, Date.now(), smPeakPoster, null);
+    }
+  }
+};
+window.addEventListener('beforeunload', () => {
+  if (typeof window.flushAndFinalizeActiveClip === 'function') {
+    window.flushAndFinalizeActiveClip();
+  }
+});
+
 export async function initOverviewPage() {
+  const searchInput = document.getElementById('camera-search-input');
+  if (searchInput && !searchInput.dataset.hasListener) {
+    searchInput.dataset.hasListener = 'true';
+    searchInput.addEventListener('input', (e) => {
+      cameraSearchQuery = (e.target.value || '').trim().toLowerCase();
+      renderPicker();
+      renderStrip();
+    });
+  }
+
   await initI18n();
   initShell({ activePage: 'overview' });
   initClipDrawer({ onClipUpdated: () => loadFlags() });
@@ -2109,4 +1882,10 @@ export async function initOverviewPage() {
   await loadFlags();
   initSSE();
   attachPlayerControls();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initOverviewPage);
+} else {
+  initOverviewPage();
 }

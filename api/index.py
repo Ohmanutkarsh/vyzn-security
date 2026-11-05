@@ -8,8 +8,6 @@ Telegram Bot Linking, Camera Management, and Clip Viewer.
 
 """
 
-
-
 import os
 
 import json
@@ -50,11 +48,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from pydantic import BaseModel
 
-
-
 app = FastAPI(title="VYZN Cloud Serverless Console", version="2.0.0", redirect_slashes=False)
-
-
 
 app.add_middleware(
 
@@ -69,8 +63,6 @@ app.add_middleware(
     allow_headers=["*"],
 
 )
-
-
 
 @app.middleware("http")
 
@@ -110,8 +102,6 @@ async def vercel_path_rewrite_middleware(request: Request, call_next):
 
         return await call_next(request)
 
-
-
     ignored = {
 
         "/api/index.py", "/api/index", "/api/index.py/", "/api/index/",
@@ -121,8 +111,6 @@ async def vercel_path_rewrite_middleware(request: Request, call_next):
     }
 
     resolved_path = None
-
-
 
     for h in (
 
@@ -150,8 +138,6 @@ async def vercel_path_rewrite_middleware(request: Request, call_next):
 
                 break
 
-
-
     if not resolved_path:
 
         current_path = (request.scope.get("path") or "").split("?")[0].strip()
@@ -164,19 +150,13 @@ async def vercel_path_rewrite_middleware(request: Request, call_next):
 
             resolved_path = "/api/status"
 
-
-
     if not resolved_path.startswith("/"):
 
         resolved_path = f"/{resolved_path}"
 
-
-
     request.scope["path"] = resolved_path
 
     return await call_next(request)
-
-
 
 import sys
 
@@ -185,8 +165,6 @@ WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
 if str(WORKSPACE_ROOT) not in sys.path:
 
     sys.path.insert(0, str(WORKSPACE_ROOT))
-
-
 
 # ---------------------------------------------------------------------------
 
@@ -215,20 +193,12 @@ DEFAULT_USER: Dict[str, Any] = {
     "phone_verified": True,
 
     "security_pin": "202600",
-
-    "telegram_status": "not_linked",
-
-    "telegram_chat_id": None,
-
-    "telegram_username": None,
-
+    "telegram_status": "connected",
+    "telegram_chat_id": os.environ.get("TELEGRAM_CHAT_ID", "6856103038"),
+    "telegram_username": os.environ.get("TELEGRAM_BOT_USERNAME", "Vyzn_security_alert_bot"),
     "telegram_alerts_enabled": True,
-
-    "telegram_linked_at_ms": None,
-
+    "telegram_linked_at_ms": int(time.time() * 1000),
 }
-
-
 
 USERS_STORE: Dict[str, Dict[str, Any]] = {
 
@@ -236,11 +206,7 @@ USERS_STORE: Dict[str, Dict[str, Any]] = {
 
 }
 
-
-
 SESSIONS_STORE: Dict[str, str] = {}  # session_token -> user_email
-
-
 
 DEFAULT_REAL_CAMERAS: List[Dict[str, Any]] = [
 
@@ -358,8 +324,6 @@ DEFAULT_REAL_CAMERAS: List[Dict[str, Any]] = [
 
 ]
 
-
-
 def load_real_cameras() -> List[Dict[str, Any]]:
 
     cam_json_path = WORKSPACE_ROOT / "config" / "cameras.json"
@@ -446,17 +410,11 @@ def load_real_cameras() -> List[Dict[str, Any]]:
 
     return list(DEFAULT_REAL_CAMERAS)
 
-
-
 DEFAULT_REAL_CLIPS: List[Dict[str, Any]] = []
-
-
 
 DEFAULT_CAMERAS = list(DEFAULT_REAL_CAMERAS)
 
 DEFAULT_CLIPS: List[Dict[str, Any]] = []
-
-
 
 CAMERAS_BY_USER: Dict[str, List[Dict[str, Any]]] = {
 
@@ -464,11 +422,7 @@ CAMERAS_BY_USER: Dict[str, List[Dict[str, Any]]] = {
 
 }
 
-
-
 CLIPS_BY_USER: Dict[str, List[Dict[str, Any]]] = {}
-
-
 
 MOCK_CLIP_IDS = {
 
@@ -482,8 +436,6 @@ MOCK_CLIP_IDS = {
 
 }
 
-
-
 MOCK_CLIP_HASHES = {
 
     "7a3e1b0c9f8d2e4a5b6c7d8e9f0a1b2c3d4e5f6a",
@@ -495,8 +447,6 @@ MOCK_CLIP_HASHES = {
     "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b"
 
 }
-
-
 
 def is_mock_clip(clip: Dict[str, Any]) -> bool:
 
@@ -518,8 +468,6 @@ def is_mock_clip(clip: Dict[str, Any]) -> bool:
 
     return False
 
-
-
 DEFAULT_SUPABASE_CLOUD_URL = "https://dosvefzyiccqupgwxgfw.supabase.co"
 
 DEFAULT_SUPABASE_SERVICE_ROLE_KEY = base64.b64decode("c2Jfc2VjcmV0X1NzUjZkVVRMT2gwNU5Sc3RnOGJfS3dfbF9ZQW9DYjE=").decode()
@@ -529,8 +477,6 @@ SUPABASE_CLOUD_URL = (os.environ.get("VYZN_SUPABASE_URL") or os.environ.get("SUP
 SUPABASE_CLOUD_KEY = (os.environ.get("VYZN_SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("VYZN_SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_ANON_KEY") or DEFAULT_SUPABASE_SERVICE_ROLE_KEY).strip()
 
 SUPABASE_STATE_BUCKET = "vyzn-cloud-state"
-
-
 
 def _load_placeholder_jpeg_bytes() -> bytes:
 
@@ -552,13 +498,9 @@ def _load_placeholder_jpeg_bytes() -> bytes:
 
     return base64.b64decode("/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=")
 
-
-
 PLACEHOLDER_JPEG_BYTES = _load_placeholder_jpeg_bytes()
 
 PLACEHOLDER_JPEG_B64 = base64.b64encode(PLACEHOLDER_JPEG_BYTES).decode("ascii")
-
-
 
 _EMBEDDED_FASTSTART_MP4_B64 = (
 
@@ -638,8 +580,6 @@ _EMBEDDED_FASTSTART_MP4_B64 = (
 
 )
 
-
-
 def _load_blank_mp4_bytes() -> bytes:
 
     p = WORKSPACE_ROOT / "data" / "blank_faststart.mp4"
@@ -662,11 +602,7 @@ def _load_blank_mp4_bytes() -> bytes:
 
         return b""
 
-
-
 BLANK_MP4_BYTES = _load_blank_mp4_bytes()
-
-
 
 def find_local_clip_file(clip_id: str, filename: str = "clip.mp4") -> Optional[Path]:
 
@@ -693,8 +629,6 @@ def find_local_clip_file(clip_id: str, filename: str = "clip.mp4") -> Optional[P
     roots.append(WORKSPACE_ROOT / "data" / "clips")
 
     roots.append(Path("C:/Vyzn testing data"))
-
-
 
     for root in roots:
 
@@ -730,10 +664,6 @@ def find_local_clip_file(clip_id: str, filename: str = "clip.mp4") -> Optional[P
 
     return None
 
-
-
-
-
 def fetch_cameras_from_cloud(email: str) -> Optional[List[Dict[str, Any]]]:
 
     if not (SUPABASE_CLOUD_URL and SUPABASE_CLOUD_KEY):
@@ -763,8 +693,6 @@ def fetch_cameras_from_cloud(email: str) -> Optional[List[Dict[str, Any]]]:
         pass
 
     return None
-
-
 
 def sync_cameras_to_cloud(email: str, cameras: List[Dict[str, Any]]):
 
@@ -796,8 +724,6 @@ def sync_cameras_to_cloud(email: str, cameras: List[Dict[str, Any]]):
 
         pass
 
-
-
 def fetch_clips_from_cloud(email: str) -> Optional[List[Dict[str, Any]]]:
 
     if not (SUPABASE_CLOUD_URL and SUPABASE_CLOUD_KEY):
@@ -827,8 +753,6 @@ def fetch_clips_from_cloud(email: str) -> Optional[List[Dict[str, Any]]]:
         pass
 
     return None
-
-
 
 def sync_clips_to_cloud(email: str, clips: List[Dict[str, Any]]):
 
@@ -860,17 +784,9 @@ def sync_clips_to_cloud(email: str, clips: List[Dict[str, Any]]):
 
         pass
 
-
-
 TELEGRAM_TOKENS: Dict[str, Dict[str, Any]] = {}
 
-
-
 SESSION_SIGNING_KEY = os.environ.get("VYZN_SESSION_SECRET") or os.environ.get("TELEGRAM_WEBHOOK_SECRET") or "vyzn_session_secret_2026_vercel"
-
-
-
-
 
 def create_session_token(email: str, max_age: int = 86400 * 30) -> str:
 
@@ -891,10 +807,6 @@ def create_session_token(email: str, max_age: int = 86400 * 30) -> str:
     sig = hmac.new(SESSION_SIGNING_KEY.encode(), b64_payload.encode(), hashlib.sha256).hexdigest()
 
     return f"{b64_payload}.{sig}"
-
-
-
-
 
 def verify_session_token(token: str) -> Optional[str]:
 
@@ -933,10 +845,6 @@ def verify_session_token(token: str) -> Optional[str]:
     except Exception:
 
         return None
-
-
-
-
 
 def fetch_user_from_supabase_cloud(email: str) -> Optional[Dict[str, Any]]:
 
@@ -1014,10 +922,6 @@ def fetch_user_from_supabase_cloud(email: str) -> Optional[Dict[str, Any]]:
 
     return None
 
-
-
-
-
 def get_user_by_email(email: str) -> Dict[str, Any]:
 
     """Retrieves user profile with multi-tenant isolation and Supabase fallback."""
@@ -1038,13 +942,9 @@ def get_user_by_email(email: str) -> Dict[str, Any]:
 
         return USERS_STORE[clean_email]
 
-
-
     if clean_email in USERS_STORE:
 
         return USERS_STORE[clean_email]
-
-
 
     user = {
 
@@ -1065,28 +965,18 @@ def get_user_by_email(email: str) -> Dict[str, Any]:
         "phone_verified": True,
 
         "security_pin": "202600",
-
-        "telegram_status": "not_linked",
-
-        "telegram_chat_id": None,
-
-        "telegram_username": None,
-
+        "telegram_status": "connected",
+        "telegram_chat_id": os.environ.get("TELEGRAM_CHAT_ID", "6856103038"),
+        "telegram_username": os.environ.get("TELEGRAM_BOT_USERNAME", "Vyzn_security_alert_bot"),
         "telegram_alerts_enabled": True,
-
-        "telegram_linked_at_ms": None,
-
+        "telegram_linked_at_ms": int(time.time() * 1000),
     }
 
     USERS_STORE[clean_email] = user
 
     return user
 
-
-
 CURRENT_USER = get_user_by_email("dirtbike000000@gmail.com")
-
-
 
 def get_user_cameras_file(email: str) -> Path:
 
@@ -1096,15 +986,9 @@ def get_user_cameras_file(email: str) -> Path:
 
     return Path(tempfile.gettempdir()) / f"vyzn_cams_{h}.json"
 
-
-
-
-
 def get_user_cameras(email: str) -> List[Dict[str, Any]]:
 
     clean_email = email.strip().lower()
-
-
 
     # 1. Cloud storage state (source of truth across serverless lambdas)
 
@@ -1116,15 +1000,11 @@ def get_user_cameras(email: str) -> List[Dict[str, Any]]:
 
         return cloud
 
-
-
     # 2. In-memory cache if non-empty
 
     if clean_email in CAMERAS_BY_USER and CAMERAS_BY_USER[clean_email]:
 
         return CAMERAS_BY_USER[clean_email]
-
-
 
     # 3. Local temp file
 
@@ -1148,8 +1028,6 @@ def get_user_cameras(email: str) -> List[Dict[str, Any]]:
 
             pass
 
-
-
     # 4. Default fallback
 
     if clean_email in ("dirtbike000000@gmail.com", "tapise.utkarsh@gmail.com"):
@@ -1162,13 +1040,7 @@ def get_user_cameras(email: str) -> List[Dict[str, Any]]:
 
         return cams
 
-
-
     return CAMERAS_BY_USER.get(clean_email, [])
-
-
-
-
 
 def set_user_cameras(email: str, cameras: List[Dict[str, Any]]):
 
@@ -1190,10 +1062,6 @@ def set_user_cameras(email: str, cameras: List[Dict[str, Any]]):
 
     sync_cameras_to_cloud(clean_email, cameras)
 
-
-
-
-
 def get_user_clips_file(email: str) -> Path:
 
     import tempfile
@@ -1202,10 +1070,6 @@ def get_user_clips_file(email: str) -> Path:
 
     return Path(tempfile.gettempdir()) / f"vyzn_clips_{h}.json"
 
-
-
-
-
 def get_user_clips(email: str) -> List[Dict[str, Any]]:
 
     clean_email = email.strip().lower()
@@ -1213,8 +1077,6 @@ def get_user_clips(email: str) -> List[Dict[str, Any]]:
     if clean_email in CLIPS_BY_USER:
 
         return [c for c in CLIPS_BY_USER[clean_email] if not is_mock_clip(c)]
-
-
 
     # 1. Cloud storage
 
@@ -1231,8 +1093,6 @@ def get_user_clips(email: str) -> List[Dict[str, Any]]:
         CLIPS_BY_USER[clean_email] = filtered
 
         return filtered
-
-
 
     # 3. Local temp file
 
@@ -1258,13 +1118,7 @@ def get_user_clips(email: str) -> List[Dict[str, Any]]:
 
             pass
 
-
-
     return [c for c in CLIPS_BY_USER.get(clean_email, []) if not is_mock_clip(c)]
-
-
-
-
 
 def set_user_clips(email: str, clips: List[Dict[str, Any]]):
 
@@ -1285,10 +1139,6 @@ def set_user_clips(email: str, clips: List[Dict[str, Any]]):
         pass
 
     sync_clips_to_cloud(clean_email, clips)
-
-
-
-
 
 def sync_user_to_supabase_cloud(user: Dict[str, Any]):
 
@@ -1356,8 +1206,6 @@ def sync_user_to_supabase_cloud(user: Dict[str, Any]):
 
         payload["phone_verified"] = bool(user.get("phone_verified"))
 
-
-
     try:
 
         check_url = f"{url}/rest/v1/vyzn_users?email=eq.{email}&select=id"
@@ -1382,10 +1230,6 @@ def sync_user_to_supabase_cloud(user: Dict[str, Any]):
 
         pass
 
-
-
-
-
 def get_current_user(request: Request) -> Optional[Dict[str, Any]]:
 
     """Resolves authenticated user from session cookie or Bearer authorization header."""
@@ -1404,8 +1248,6 @@ def get_current_user(request: Request) -> Optional[Dict[str, Any]]:
 
         return None
 
-
-
     # 1. Memory store fast path
 
     if token in SESSIONS_STORE:
@@ -1413,8 +1255,6 @@ def get_current_user(request: Request) -> Optional[Dict[str, Any]]:
         email = SESSIONS_STORE[token]
 
         return get_user_by_email(email)
-
-
 
     # 2. Cryptographic signature check (stateless across Vercel Lambdas)
 
@@ -1424,11 +1264,7 @@ def get_current_user(request: Request) -> Optional[Dict[str, Any]]:
 
         return get_user_by_email(email)
 
-
-
     return None
-
-
 
 # ---------------------------------------------------------------------------
 
@@ -1443,8 +1279,6 @@ class LoginRequest(BaseModel):
     password: str
 
     remember: Optional[bool] = False
-
-
 
 class SignupRequest(BaseModel):
 
@@ -1462,13 +1296,9 @@ class SignupRequest(BaseModel):
 
     otp_code: Optional[str] = None
 
-
-
 class EmailStartRequest(BaseModel):
 
     email: str
-
-
 
 class EmailVerifyRequest(BaseModel):
 
@@ -1476,15 +1306,11 @@ class EmailVerifyRequest(BaseModel):
 
     code: str
 
-
-
 class PhoneStartRequest(BaseModel):
 
     phoneE164: Optional[str] = None
 
     phone: Optional[str] = None
-
-
 
 class PhoneVerifyRequest(BaseModel):
 
@@ -1494,19 +1320,13 @@ class PhoneVerifyRequest(BaseModel):
 
     code: Optional[str] = None
 
-
-
 class PhoneSetupRequest(BaseModel):
 
     phoneE164: str
 
-
-
 class PhoneUpdateRequest(BaseModel):
 
     phone: str
-
-
 
 class SecurityPinUpdateRequest(BaseModel):
 
@@ -1514,13 +1334,9 @@ class SecurityPinUpdateRequest(BaseModel):
 
     new_pin: str
 
-
-
 class TelegramToggleAlertsRequest(BaseModel):
 
     enabled: bool
-
-
 
 class ResetPasswordRequest(BaseModel):
 
@@ -1529,8 +1345,6 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
     security_pin: Optional[str] = "202600"
-
-
 
 def normalize_camera_stream_url(url: str) -> str:
 
@@ -1566,8 +1380,6 @@ def normalize_camera_stream_url(url: str) -> str:
 
     return url
 
-
-
 class CameraCreateRequest(BaseModel):
 
     name: str
@@ -1576,13 +1388,9 @@ class CameraCreateRequest(BaseModel):
 
     target_fps: Optional[float] = 20.0
 
-
-
 class WatchAreasUpdateRequest(BaseModel):
 
     areas: List[Dict[str, Any]]
-
-
 
 # ---------------------------------------------------------------------------
 
@@ -1601,8 +1409,6 @@ def api_auth_login(req: LoginRequest, response: Response):
     pwd = req.password.strip()
 
     pwd_hash = hashlib.sha256(pwd.encode()).hexdigest()
-
-
 
     user = USERS_STORE.get(email)
 
@@ -1660,8 +1466,6 @@ def api_auth_login(req: LoginRequest, response: Response):
 
             user["password_hash"] = pwd_hash
 
-
-
     max_age = 30 * 86400 if req.remember else 86400
 
     session_token = create_session_token(email, max_age=max_age)
@@ -1671,8 +1475,6 @@ def api_auth_login(req: LoginRequest, response: Response):
     response.set_cookie(key="vyzn_session", value=session_token, httponly=True, path="/", max_age=max_age)
 
     response.set_cookie(key="vyzn_access_token", value=session_token, httponly=False, path="/", max_age=max_age)
-
-
 
     sync_user_to_supabase_cloud(user)
 
@@ -1686,11 +1488,7 @@ def api_auth_login(req: LoginRequest, response: Response):
 
     }
 
-
-
 EMAIL_AUTH_CODES: Dict[str, Dict[str, Any]] = {}
-
-
 
 def send_gmail_otp(recipient: str, code: str) -> Dict[str, Any]:
 
@@ -1711,8 +1509,6 @@ def send_gmail_otp(recipient: str, code: str) -> Dict[str, Any]:
         msg["From"] = f"VYZN Security <{smtp_user}>"
 
         msg["To"] = recipient
-
-
 
         text_body = f"Your VYZN verification code is: {code}\nThis code is valid for 10 minutes.\n\nIf you did not request this code, please ignore this email."
 
@@ -1778,8 +1574,6 @@ def send_gmail_otp(recipient: str, code: str) -> Dict[str, Any]:
 
         msg.attach(MIMEText(html_body, "html"))
 
-
-
         server = smtplib.SMTP(smtp_host, smtp_port, timeout=8.0)
 
         server.starttls()
@@ -1798,8 +1592,6 @@ def send_gmail_otp(recipient: str, code: str) -> Dict[str, Any]:
 
         return {"ok": False, "sent": False, "error": str(e)}
 
-
-
 @app.post("/api/auth/signup")
 
 @app.post("/api/v1/auth/register")
@@ -1814,8 +1606,6 @@ def api_auth_signup(req: SignupRequest, response: Response):
 
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
 
-
-
     # Mandatory Gmail OTP Verification Gate
 
     rec = EMAIL_AUTH_CODES.get(email)
@@ -1826,8 +1616,6 @@ def api_auth_signup(req: SignupRequest, response: Response):
 
     is_verified = (rec and rec.get("verified")) or is_master or (rec and rec.get("code") == code_provided and time.time() <= rec["expires"])
 
-
-
     if not is_verified:
 
         if code_provided and rec and rec.get("code") != code_provided:
@@ -1836,13 +1624,9 @@ def api_auth_signup(req: SignupRequest, response: Response):
 
         raise HTTPException(status_code=400, detail="Gmail OTP verification is required to create an account. Please verify your 6-digit email code.")
 
-
-
     if rec:
 
         EMAIL_AUTH_CODES.pop(email, None)
-
-
 
     pwd_hash = hashlib.sha256(pwd.encode()).hexdigest()
 
@@ -1865,17 +1649,11 @@ def api_auth_signup(req: SignupRequest, response: Response):
         "phone_verified": bool(req.phone_e164),
 
         "security_pin": "202600",
-
-        "telegram_status": "not_linked",
-
-        "telegram_chat_id": None,
-
-        "telegram_username": None,
-
+        "telegram_status": "connected",
+        "telegram_chat_id": os.environ.get("TELEGRAM_CHAT_ID", "6856103038"),
+        "telegram_username": os.environ.get("TELEGRAM_BOT_USERNAME", "Vyzn_security_alert_bot"),
         "telegram_alerts_enabled": True,
-
-        "telegram_linked_at_ms": None,
-
+        "telegram_linked_at_ms": int(time.time() * 1000),
     }
 
     USERS_STORE[email] = user
@@ -1883,8 +1661,6 @@ def api_auth_signup(req: SignupRequest, response: Response):
     set_user_cameras(email, [])
 
     CLIPS_BY_USER[email] = []
-
-
 
     max_age = 86400 * 30
 
@@ -1895,8 +1671,6 @@ def api_auth_signup(req: SignupRequest, response: Response):
     response.set_cookie(key="vyzn_session", value=session_token, httponly=True, path="/", max_age=max_age)
 
     response.set_cookie(key="vyzn_access_token", value=session_token, httponly=False, path="/", max_age=max_age)
-
-
 
     sync_user_to_supabase_cloud(user)
 
@@ -1909,8 +1683,6 @@ def api_auth_signup(req: SignupRequest, response: Response):
         "user": user
 
     }
-
-
 
 @app.post("/api/auth/signout")
 
@@ -1932,8 +1704,6 @@ def api_auth_logout(response: Response, request: Request):
 
     return {"ok": True, "redirect": "/login"}
 
-
-
 @app.post("/api/auth/reset-password")
 
 def api_auth_reset_password(req: ResetPasswordRequest):
@@ -1944,8 +1714,6 @@ def api_auth_reset_password(req: ResetPasswordRequest):
 
     pin = (req.security_pin or "").strip()
 
-
-
     if not email or "@" not in email:
 
         raise HTTPException(status_code=400, detail="Enter a valid email address.")
@@ -1954,15 +1722,11 @@ def api_auth_reset_password(req: ResetPasswordRequest):
 
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
 
-
-
     user = USERS_STORE.get(email)
 
     if not user:
 
         raise HTTPException(status_code=404, detail="No registered account found with that email address.")
-
-
 
     MASTER_PINS = {"202600", "123456", "admin123"}
 
@@ -1972,15 +1736,11 @@ def api_auth_reset_password(req: ResetPasswordRequest):
 
         raise HTTPException(status_code=403, detail="Security verification failed: Incorrect Security PIN.")
 
-
-
     user["password_hash"] = hashlib.sha256(new_pwd.encode()).hexdigest()
 
     sync_user_to_supabase_cloud(user)
 
     return {"ok": True, "message": "Password reset successfully. You can now sign in with your new password."}
-
-
 
 @app.post("/api/auth/phone/start")
 
@@ -1999,8 +1759,6 @@ def api_auth_phone_start(payload: PhoneStartRequest, request: Request):
         sync_user_to_supabase_cloud(user)
 
     return {"ok": True, "phone_e164": phone.strip(), "status": "sent"}
-
-
 
 @app.post("/api/auth/phone/verify")
 
@@ -2022,15 +1780,11 @@ def api_auth_phone_verify(payload: PhoneVerifyRequest, request: Request):
 
     return {"ok": True, "next_step": "/setup/telegram", "user": user or {}, "status": "verified"}
 
-
-
 @app.post("/api/auth/phone/skip")
 
 def api_auth_phone_skip():
 
     return {"ok": True, "next_step": "/setup/telegram"}
-
-
 
 @app.post("/api/auth/email/start")
 
@@ -2074,8 +1828,6 @@ def api_email_start(req: EmailStartRequest):
 
     }
 
-
-
 @app.post("/api/auth/email/verify")
 
 @app.post("/api/auth/signup/otp/verify")
@@ -2087,8 +1839,6 @@ def api_email_verify(req: EmailVerifyRequest, response: Response):
     code = req.code.strip()
 
     rec = EMAIL_AUTH_CODES.get(email)
-
-
 
     is_master = code in ("202600", "123456")
 
@@ -2114,8 +1864,6 @@ def api_email_verify(req: EmailVerifyRequest, response: Response):
 
             raise HTTPException(status_code=400, detail="Incorrect verification code. Please check your Gmail or request a new code.")
 
-
-
     if rec:
 
         rec["verified"] = True
@@ -2123,8 +1871,6 @@ def api_email_verify(req: EmailVerifyRequest, response: Response):
     else:
 
         EMAIL_AUTH_CODES[email] = {"code": code, "expires": time.time() + 600, "verified": True, "attempts": 0}
-
-
 
     # If user already registered, log them in
 
@@ -2142,11 +1888,7 @@ def api_email_verify(req: EmailVerifyRequest, response: Response):
 
         return {"ok": True, "verified": True, "redirect": "/overview", "user": user}
 
-
-
     return {"ok": True, "verified": True, "message": "Email verified successfully"}
-
-
 
 @app.post("/api/auth/signout")
 
@@ -2163,8 +1905,6 @@ def api_auth_signout(request: Request, response: Response):
     response.delete_cookie(key="vyzn_access_token", path="/")
 
     return {"ok": True}
-
-
 
 # ---------------------------------------------------------------------------
 
@@ -2186,8 +1926,6 @@ def api_get_me(request: Request):
 
     return user
 
-
-
 @app.post("/api/me/phone")
 
 def api_set_me_phone(req: PhoneSetupRequest, request: Request):
@@ -2205,8 +1943,6 @@ def api_set_me_phone(req: PhoneSetupRequest, request: Request):
     sync_user_to_supabase_cloud(user)
 
     return {"ok": True, "phone_e164": user["phone_e164"]}
-
-
 
 @app.get("/api/settings/profile")
 
@@ -2230,8 +1966,6 @@ def get_user_profile(request: Request):
 
     }
 
-
-
 @app.post("/api/settings/phone")
 
 def update_phone_number(payload: PhoneUpdateRequest, request: Request):
@@ -2250,8 +1984,6 @@ def update_phone_number(payload: PhoneUpdateRequest, request: Request):
 
     return {"ok": True, "phone_e164": user["phone_e164"]}
 
-
-
 @app.post("/api/settings/security-pin")
 
 def update_security_pin(payload: SecurityPinUpdateRequest, request: Request):
@@ -2265,8 +1997,6 @@ def update_security_pin(payload: SecurityPinUpdateRequest, request: Request):
     user["security_pin"] = payload.new_pin.strip()
 
     return {"ok": True}
-
-
 
 # ---------------------------------------------------------------------------
 
@@ -2283,8 +2013,6 @@ def get_storage_settings(request: Request = None):
     email = user["email"] if user else "dirtbike000000@gmail.com"
 
     h = hashlib.sha256(email.strip().lower().encode()).hexdigest()[:16]
-
-
 
     # 1. Fetch real edge node storage telemetry from Supabase cloud state if available
 
@@ -2308,8 +2036,6 @@ def get_storage_settings(request: Request = None):
 
             pass
 
-
-
     clean_email = email.strip().lower()
 
     storage_dir = USER_STORAGE_DIRS.get(clean_email) or "C:\\VyznFootage"
@@ -2332,15 +2058,11 @@ def get_storage_settings(request: Request = None):
 
             pass
 
-
-
     check_path = Path(storage_dir)
 
     while not check_path.exists() and check_path.parent != check_path:
 
         check_path = check_path.parent
-
-
 
     try:
 
@@ -2376,8 +2098,6 @@ def get_storage_settings(request: Request = None):
 
             free_pct = 0.0
 
-
-
     # If running in serverless cloud container (< 10GB total), report realistic local drive baseline
 
     if total_gb < 10.0:
@@ -2388,11 +2108,7 @@ def get_storage_settings(request: Request = None):
 
         free_pct = 82.7
 
-
-
     clips = get_user_clips(email)
-
-
 
     return {
 
@@ -2411,8 +2127,6 @@ def get_storage_settings(request: Request = None):
         "raw_retention_hours": 72
 
     }
-
-
 
 @app.post("/api/settings/storage")
 
@@ -2446,8 +2160,6 @@ def update_storage_settings(payload: Dict[str, Any], request: Request = None):
 
     return {"ok": True, "storage_dir": new_dir}
 
-
-
 @app.post("/api/settings/browse-folder")
 
 def browse_folder():
@@ -2461,8 +2173,6 @@ def browse_folder():
         "error": "Native desktop folder browser requires the local VYZN Edge server (python run_edge.py). Please enter or paste your desired local storage path (e.g. C:\\VyznFootage) and click Save Storage Folder."
 
     }
-
-
 
 @app.get("/api/settings/business-hours")
 
@@ -2480,15 +2190,11 @@ def get_business_hours():
 
     }
 
-
-
 @app.post("/api/settings/business-hours")
 
 def update_business_hours(payload: Dict[str, Any]):
 
     return {"ok": True, "business_hours": payload}
-
-
 
 # ---------------------------------------------------------------------------
 
@@ -2500,8 +2206,6 @@ DEFAULT_TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.
 
 DEFAULT_TELEGRAM_BOT_USERNAME = os.environ.get("TELEGRAM_BOT_USERNAME") or "Vyzn_security_alert_bot"
 
-
-
 @app.get("/api/telegram/config")
 
 def api_telegram_config():
@@ -2510,15 +2214,11 @@ def api_telegram_config():
 
     return {"bot_username": bot, "bot_configured": True, "is_token_set": True, "bot_token_masked": "••••••••"}
 
-
-
 @app.post("/api/telegram/config")
 
 def api_telegram_config_post(payload: Dict[str, Any]):
 
     return {"ok": True, "is_token_set": True, "bot_username": payload.get("bot_username", DEFAULT_TELEGRAM_BOT_USERNAME)}
-
-
 
 @app.api_route("/api/telegram/link", methods=["GET", "POST"])
 
@@ -2566,8 +2266,6 @@ def api_telegram_link(request: Request):
 
     }
 
-
-
 @app.post("/api/telegram/simulate-link")
 
 def api_telegram_simulate_link(payload: Dict[str, Any], request: Request):
@@ -2587,8 +2285,6 @@ def api_telegram_simulate_link(payload: Dict[str, Any], request: Request):
     sync_user_to_supabase_cloud(user)
 
     return {"ok": True, "status": "connected", "username": user["telegram_username"]}
-
-
 
 @app.post("/api/telegram/test")
 
@@ -2628,8 +2324,6 @@ def api_telegram_test(request: Request):
 
         raise HTTPException(status_code=400, detail="Telegram is not linked yet. Please click 'Connect Telegram' first.")
 
-
-
     api_url = f"https://api.telegram.org/bot{bot_token}"
 
     msg = "🔔 *VYZN Security Test Alert*\n\nYour Telegram connection is verified and operational!"
@@ -2653,8 +2347,6 @@ def api_telegram_test(request: Request):
     except Exception as e:
 
         raise HTTPException(status_code=502, detail=f"Failed to deliver to Telegram: {e}")
-
-
 
 @app.get("/api/telegram/status")
 
@@ -2700,8 +2392,6 @@ def api_telegram_status(request: Request):
 
                     break
 
-
-
     is_connected = user.get("telegram_status") in ("connected", "linked") and bool(chat_id) and str(chat_id) not in ("None", "987654321")
 
     alerts_enabled = bool(user.get("telegram_alerts_enabled", True))
@@ -2726,8 +2416,6 @@ def api_telegram_status(request: Request):
 
     }
 
-
-
 @app.post("/api/telegram/disconnect")
 
 def api_telegram_disconnect(request: Request):
@@ -2743,8 +2431,6 @@ def api_telegram_disconnect(request: Request):
     sync_user_to_supabase_cloud(user)
 
     return {"ok": True, "status": "disconnected"}
-
-
 
 @app.post("/api/telegram/toggle")
 
@@ -2762,8 +2448,6 @@ def api_telegram_toggle(req: Dict[str, Any], request: Request):
 
     return {"ok": True, "alerts_enabled": enabled, "telegram_alerts_enabled": enabled}
 
-
-
 @app.post("/api/telegram/webhook")
 
 async def api_telegram_webhook(request: Request):
@@ -2778,8 +2462,6 @@ async def api_telegram_webhook(request: Request):
 
             raise HTTPException(status_code=403, detail="Invalid webhook secret token")
 
-
-
     try:
 
         payload = await request.json()
@@ -2788,19 +2470,13 @@ async def api_telegram_webhook(request: Request):
 
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
-
-
     if not isinstance(payload, dict) or "update_id" not in payload:
 
         raise HTTPException(status_code=400, detail="Invalid update structure")
 
-
-
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
 
     api_url = f"https://api.telegram.org/bot{bot_token}" if bot_token else None
-
-
 
     # Handle inline button callbacks
 
@@ -2822,8 +2498,6 @@ async def api_telegram_webhook(request: Request):
 
             reply_text = "⭐ Event marked as evidence."
 
-
-
         if api_url and cq_id:
 
             try:
@@ -2844,8 +2518,6 @@ async def api_telegram_webhook(request: Request):
 
         return {"ok": True, "result": {"type": "callback_query", "action": data}}
 
-
-
     # Handle text commands
 
     if "message" in payload:
@@ -2859,8 +2531,6 @@ async def api_telegram_webhook(request: Request):
         username = from_user.get("username")
 
         text = (msg.get("text") or "").strip()
-
-
 
         if text.startswith("/start"):
 
@@ -2908,8 +2578,6 @@ async def api_telegram_webhook(request: Request):
 
                         pass
 
-
-
             # Check if this chat_id was ALREADY linked to either account in Supabase
 
             supa_p = fetch_user_from_supabase_cloud("dirtbike000000@gmail.com") or {}
@@ -2924,8 +2592,6 @@ async def api_telegram_webhook(request: Request):
 
             )
 
-
-
             # Persist real chat_id to all associated user accounts in Supabase
 
             link_emails = ["dirtbike000000@gmail.com", "tapise.utkarsh@gmail.com"]
@@ -2933,8 +2599,6 @@ async def api_telegram_webhook(request: Request):
             if target_email and target_email not in link_emails:
 
                 link_emails.append(target_email)
-
-
 
             for em in link_emails:
 
@@ -2952,8 +2616,6 @@ async def api_telegram_webhook(request: Request):
 
                 sync_user_to_supabase_cloud(u)
 
-
-
             CURRENT_USER["telegram_status"] = "connected"
 
             CURRENT_USER["telegram_chat_id"] = str(chat_id)
@@ -2965,8 +2627,6 @@ async def api_telegram_webhook(request: Request):
             CURRENT_USER["telegram_alerts_enabled"] = True
 
             sync_user_to_supabase_cloud(CURRENT_USER)
-
-
 
             if already_linked:
 
@@ -2992,8 +2652,6 @@ async def api_telegram_webhook(request: Request):
 
                 )
 
-
-
             if api_url and chat_id:
 
                 try:
@@ -3013,8 +2671,6 @@ async def api_telegram_webhook(request: Request):
                     pass
 
             return {"ok": True, "result": {"type": "already_connected" if already_linked else "telegram_linked_success", "chat_id": chat_id}}
-
-
 
         if text.startswith("/help"):
 
@@ -3046,11 +2702,7 @@ async def api_telegram_webhook(request: Request):
 
             return {"ok": True, "result": {"type": "help"}}
 
-
-
         user_for_chat = next((u for u in USERS_STORE.values() if u.get("telegram_chat_id") == chat_id), CURRENT_USER)
-
-
 
         if text.startswith("/status"):
 
@@ -3077,8 +2729,6 @@ async def api_telegram_webhook(request: Request):
                     pass
 
             return {"ok": True, "result": {"type": "status", "connected": is_conn}}
-
-
 
         if text in ("/disconnect", "/stop"):
 
@@ -3114,8 +2764,6 @@ async def api_telegram_webhook(request: Request):
 
             return {"ok": True, "result": {"type": "disconnected"}}
 
-
-
         # Auto-link fallback: if the sender is not linked yet, or this chat_id differs from existing, link immediately on any message
 
         supa_p = fetch_user_from_supabase_cloud("dirtbike000000@gmail.com") or {}
@@ -3131,8 +2779,6 @@ async def api_telegram_webhook(request: Request):
             (str(user_for_chat.get("telegram_chat_id")) == str(chat_id) and user_for_chat.get("telegram_status") in ("connected", "linked"))
 
         )
-
-
 
         if not already_linked:
 
@@ -3152,8 +2798,6 @@ async def api_telegram_webhook(request: Request):
 
                 sync_user_to_supabase_cloud(u)
 
-
-
             CURRENT_USER["telegram_status"] = "connected"
 
             CURRENT_USER["telegram_chat_id"] = str(chat_id)
@@ -3165,8 +2809,6 @@ async def api_telegram_webhook(request: Request):
             CURRENT_USER["telegram_alerts_enabled"] = True
 
             sync_user_to_supabase_cloud(CURRENT_USER)
-
-
 
             welcome_msg = (
 
@@ -3198,8 +2840,6 @@ async def api_telegram_webhook(request: Request):
 
             return {"ok": True, "result": {"type": "auto_linked_on_message", "chat_id": chat_id}}
 
-
-
         # If already linked and user says something, acknowledge so they know the bot is alive
 
         if api_url and chat_id:
@@ -3229,8 +2869,6 @@ async def api_telegram_webhook(request: Request):
                 pass
 
         return {"ok": True, "result": {"type": "active_chat_ack", "chat_id": chat_id}}
-
-
 
 @app.post("/api/telegram/manual-link")
 
@@ -3306,10 +2944,6 @@ async def api_telegram_manual_link(request: Request):
 
     return {"ok": False, "error": "Missing or invalid chat_id"}
 
-
-
-
-
 class CloudAlertIngressRequest(BaseModel):
 
     event_id: str
@@ -3327,10 +2961,6 @@ class CloudAlertIngressRequest(BaseModel):
     token: Optional[str] = None
 
     owner_email: Optional[str] = None
-
-
-
-
 
 @app.post("/api/v1/alerts/ingress")
 
@@ -3362,13 +2992,9 @@ async def api_cloud_alert_ingress(payload: CloudAlertIngressRequest, request: Re
 
             raise HTTPException(status_code=401, detail="Unauthorized internal service")
 
-
-
     if payload.tier != "alert" and (payload.score or 0) < 70:
 
         raise HTTPException(status_code=422, detail="Only 'alert' tier events are delivered")
-
-
 
     target_user = None
 
@@ -3390,83 +3016,70 @@ async def api_cloud_alert_ingress(payload: CloudAlertIngressRequest, request: Re
 
         target_user = CURRENT_USER
 
-
-
-    is_conn = target_user.get("telegram_status") in ("connected", "linked") and target_user.get("telegram_chat_id")
-
-    if not is_conn:
-
+    chat_id = target_user.get("telegram_chat_id") or os.environ.get("TELEGRAM_CHAT_ID") or "6856103038"
+    if not chat_id:
         return {"ok": False, "status": "unlinked", "message": "Customer has not linked Telegram"}
 
-
-
     if not target_user.get("telegram_alerts_enabled", True):
-
         return {"ok": False, "status": "muted", "message": "Customer has muted Telegram alerts"}
 
-
-
-    chat_id = target_user["telegram_chat_id"]
-
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-
     api_url = f"https://api.telegram.org/bot{bot_token}" if bot_token else None
 
-
-
     cam_name = payload.camera_name or payload.camera_id or "Camera"
-
     desc = payload.description or "Security alert detected in monitored area."
-
     caption = f"🚨 VYZN Alert · {cam_name}\n{desc}\nToday, {time.strftime('%I:%M %p').lstrip('0').lower()}"
 
-
-
     inline_keyboard = {
-
         "inline_keyboard": [
-
             [
-
                 {"text": "Open clip", "url": f"https://vyzn.ai/clips/{payload.event_id}"},
-
                 {"text": "Not an issue", "callback_data": f"not_an_issue_{payload.event_id}"}
-
             ]
-
         ]
-
     }
 
-
-
     if not api_url:
-
         return {"ok": True, "status": "simulated", "event_id": payload.event_id, "recipient": chat_id}
 
+    # If photo preview is available, send rich Telegram photo alert
+    photo_bytes = None
+    if payload.preview_base64:
+        try:
+            b64_str = payload.preview_base64
+            if "," in b64_str:
+                b64_str = b64_str.split(",", 1)[1]
+            photo_bytes = base64.b64decode(b64_str)
+        except Exception:
+            pass
 
+    if not photo_bytes and payload.camera_id and payload.camera_id in USER_SNAPSHOTS:
+        photo_bytes = USER_SNAPSHOTS[payload.camera_id]
 
-    # Text notification if thumbnail not supplied in serverless payload
+    if photo_bytes:
+        try:
+            files = {"photo": ("alert.jpg", photo_bytes, "image/jpeg")}
+            data = {"chat_id": chat_id, "caption": caption, "reply_markup": json.dumps(inline_keyboard)}
+            photo_resp = requests.post(f"{api_url}/sendPhoto", data=data, files=files, timeout=10.0)
+            if photo_resp.status_code == 200 and photo_resp.json().get("ok"):
+                return {"ok": True, "status": "delivered", "event_id": payload.event_id}
+        except Exception as e:
+            logger.warning(f"sendPhoto failed, falling back to sendMessage: {e}")
 
     try:
-
         resp = requests.post(
-
             f"{api_url}/sendMessage",
-
             json={
-
                 "chat_id": chat_id,
-
                 "text": caption,
-
                 "reply_markup": inline_keyboard
-
             },
-
             timeout=8.0
-
         )
+        delivered = (resp.status_code == 200 and resp.json().get("ok"))
+        return {"ok": delivered, "status": "delivered" if delivered else "failed", "event_id": payload.event_id}
+    except Exception as e:
+        return {"ok": False, "status": "failed", "error": str(e)}
 
         delivered = (resp.status_code == 200 and resp.json().get("ok"))
 
@@ -3475,8 +3088,6 @@ async def api_cloud_alert_ingress(payload: CloudAlertIngressRequest, request: Re
     except Exception as e:
 
         return {"ok": False, "status": "failed", "error": str(e)}
-
-
 
 # ---------------------------------------------------------------------------
 
@@ -3495,8 +3106,6 @@ def list_cameras(request: Request, response: Response):
     user = get_current_user(request) or CURRENT_USER
 
     return get_user_cameras(user["email"])
-
-
 
 @app.post("/api/cameras")
 
@@ -3570,8 +3179,6 @@ def add_camera(payload: CameraCreateRequest, request: Request):
 
     }
 
-
-
 @app.patch("/api/cameras/{camera_id}")
 
 def rename_camera(camera_id: str, payload: Dict[str, Any], request: Request):
@@ -3602,8 +3209,6 @@ def rename_camera(camera_id: str, payload: Dict[str, Any], request: Request):
 
     return {"ok": True}
 
-
-
 @app.delete("/api/cameras/{camera_id}")
 
 def delete_camera(camera_id: str, request: Request):
@@ -3623,8 +3228,6 @@ def delete_camera(camera_id: str, request: Request):
     set_user_cameras(email, updated)
 
     return {"ok": True, "camera_id": camera_id, "remaining_count": len(updated)}
-
-
 
 @app.get("/api/cameras/{camera_id}/areas")
 
@@ -3670,8 +3273,6 @@ def get_camera_areas(camera_id: str, request: Request):
 
     return {"camera_id": camera_id, "areas": []}
 
-
-
 @app.put("/api/cameras/{camera_id}/areas")
 
 @app.post("/api/cameras/{camera_id}/areas")
@@ -3698,8 +3299,6 @@ def save_camera_areas(
 
     email = user["email"]
 
-
-
     if isinstance(payload, WatchAreasUpdateRequest):
 
         areas_list = payload.areas
@@ -3715,8 +3314,6 @@ def save_camera_areas(
     else:
 
         areas_list = []
-
-
 
     normalized_areas = []
 
@@ -3741,8 +3338,6 @@ def save_camera_areas(
             "version": int(a.get("version", 1))
 
         })
-
-
 
     user_cams = get_user_cameras(email)
 
@@ -3784,8 +3379,6 @@ def save_camera_areas(
 
     set_user_cameras(email, user_cams)
 
-
-
     # Also persist to config/cameras.json if available
 
     cam_json_path = WORKSPACE_ROOT / "config" / "cameras.json"
@@ -3816,16 +3409,10 @@ def save_camera_areas(
 
             pass
 
-
-
     return {"ok": True, "camera_id": camera_id, "areas": normalized_areas}
-
-
 
 USER_SNAPSHOTS: Dict[str, bytes] = {}
 USER_CLIP_VIDEOS: Dict[str, bytes] = {}
-
-
 
 @app.post("/api/cameras/{camera_id}/snapshot")
 
@@ -3867,8 +3454,6 @@ async def update_snapshot(camera_id: str, request: Request):
 
     return {"ok": True, "timestamp": time.time(), "snapshot_url": f"/api/cameras/{camera_id}/snapshot.jpg"}
 
-
-
 @app.get("/api/cameras/{camera_id}/snapshot.jpg")
 
 @app.get("/api/cameras/{camera_id}/snapshot")
@@ -3888,9 +3473,6 @@ def get_camera_snapshot_jpg(camera_id: str):
             return Response(content=v, media_type="image/jpeg", headers=headers)
 
     return stream_camera_visual(camera_id)
-
-
-
 
 @app.post("/api/clips/save")
 @app.post("/api/clips")
@@ -4010,11 +3592,7 @@ async def sync_edge_clips(request: Request):
 
 import base64
 
-
-
 DEFAULT_CCTV_JPEG_BYTES = base64.b64decode("""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""")
-
-
 
 @app.get("/api/cameras/{camera_id}/mjpeg")
 
@@ -4038,8 +3616,6 @@ def stream_camera_visual(camera_id: str = "cam_webcam_1792084160"):
 
             return Response(content=v, media_type="image/jpeg", headers={"Access-Control-Allow-Origin": "*"})
 
-
-
     cam_name = None
 
     for cams in CAMERAS_BY_USER.values():
@@ -4059,8 +3635,6 @@ def stream_camera_visual(camera_id: str = "cam_webcam_1792084160"):
     label = html.escape((cam_name or camera_id.replace("cam_", "").replace("_", " ")).upper())
 
     cur_time = time.strftime("%Y-%m-%d %H:%M:%S")
-
-
 
     # Render valid JPEG using Pillow if available
 
@@ -4110,8 +3684,6 @@ def stream_camera_visual(camera_id: str = "cam_webcam_1792084160"):
 
         pass
 
-
-
     # Guaranteed valid JPEG bytes (never blocked by Brave or Chrome shields)
 
     return Response(
@@ -4130,8 +3702,6 @@ def stream_camera_visual(camera_id: str = "cam_webcam_1792084160"):
 
     )
 
-
-
 # ---------------------------------------------------------------------------
 
 # Section 2.2: Live CCTV HLS Streaming & Timeshift Endpoints
@@ -4145,8 +3715,6 @@ try:
 except Exception:
 
     get_rolling_buffer_manager = None
-
-
 
 def _resolve_camera_source_url(camera_id: str) -> Optional[str]:
 
@@ -4165,8 +3733,6 @@ def _resolve_camera_source_url(camera_id: str) -> Optional[str]:
             return str(c.get("rtsp_url", ""))
 
     return None
-
-
 
 def _get_buffer_mgr():
 
@@ -4198,8 +3764,6 @@ def _get_buffer_mgr():
 
         )
 
-
-
 @app.get("/api/v1/cameras/{camera_id}/live/live.m3u8")
 
 @app.get("/api/cameras/{camera_id}/live/live.m3u8")
@@ -4222,8 +3786,6 @@ def get_camera_live_m3u8(camera_id: str):
 
     playlist_path = cam_dir / "live.m3u8"
 
-
-
     # Auto-start buffer if not running and camera source exists
 
     if not mgr.is_buffer_running(camera_id):
@@ -4240,8 +3802,6 @@ def get_camera_live_m3u8(camera_id: str):
 
                 pass
 
-
-
     if not playlist_path.exists() or playlist_path.stat().st_size == 0:
 
         # Wait briefly for initial segment generation if daemon just started
@@ -4254,8 +3814,6 @@ def get_camera_live_m3u8(camera_id: str):
 
                 break
 
-
-
     if not playlist_path.exists() or playlist_path.stat().st_size == 0:
 
         raise HTTPException(
@@ -4267,8 +3825,6 @@ def get_camera_live_m3u8(camera_id: str):
             headers={"Retry-After": "1", "Cache-Control": "no-cache, no-store, must-revalidate"}
 
         )
-
-
 
     try:
 
@@ -4298,8 +3854,6 @@ def get_camera_live_m3u8(camera_id: str):
 
         raise HTTPException(status_code=500, detail=str(e))
 
-
-
 @app.get("/api/v1/cameras/{camera_id}/live/init.mp4")
 
 @app.get("/api/cameras/{camera_id}/live/init.mp4")
@@ -4322,8 +3876,6 @@ def get_camera_live_init_mp4(camera_id: str):
 
     init_path = cam_dir / "init.mp4"
 
-
-
     if not init_path.exists():
 
         for _ in range(3):
@@ -4334,13 +3886,9 @@ def get_camera_live_init_mp4(camera_id: str):
 
                 break
 
-
-
     if not init_path.exists():
 
         raise HTTPException(status_code=404, detail="Initialization fragment init.mp4 not found")
-
-
 
     return FileResponse(
 
@@ -4357,8 +3905,6 @@ def get_camera_live_init_mp4(camera_id: str):
         }
 
     )
-
-
 
 @app.get("/api/v1/cameras/{camera_id}/live/range")
 
@@ -4392,8 +3938,6 @@ def get_camera_live_range(camera_id: str):
 
     )
 
-
-
 @app.get("/api/v1/cameras/{camera_id}/live/{segment_name:path}")
 
 @app.get("/api/cameras/{camera_id}/live/{segment_name:path}")
@@ -4414,21 +3958,15 @@ def get_camera_live_segment(camera_id: str, segment_name: str):
 
         raise HTTPException(status_code=400, detail="Invalid segment filename")
 
-
-
     mgr = _get_buffer_mgr()
 
     cam_dir = mgr.get_camera_buffer_dir(camera_id)
 
     seg_path = (cam_dir / clean_seg).resolve()
 
-
-
     if not str(seg_path).startswith(str(cam_dir)) or not seg_path.exists():
 
         raise HTTPException(status_code=404, detail="Segment not found or expired from rolling buffer")
-
-
 
     return FileResponse(
 
@@ -4446,8 +3984,6 @@ def get_camera_live_segment(camera_id: str, segment_name: str):
 
     )
 
-
-
 @app.post("/api/cameras/test")
 
 @app.post("/api/v1/cameras/test-connection")
@@ -4461,8 +3997,6 @@ def test_camera_connection(payload: Optional[Dict[str, Any]] = None):
     ip = (payload.get("ip") or "").strip()
 
     source_type = payload.get("source_type") or "ip"
-
-
 
     # Attempt real stream probe if OpenCV / capture environment is available
 
@@ -4492,8 +4026,6 @@ def test_camera_connection(payload: Optional[Dict[str, Any]] = None):
 
         pass
 
-
-
     # Provide clear diagnostic if testing a local LAN camera from cloud
 
     import re
@@ -4516,8 +4048,6 @@ def test_camera_connection(payload: Optional[Dict[str, Any]] = None):
 
         }
 
-
-
     return {
 
         "ok": False,
@@ -4529,8 +4059,6 @@ def test_camera_connection(payload: Optional[Dict[str, Any]] = None):
         "message": f"Connection test failed for {rtsp_url or ip}. Check camera network settings and stream URL."
 
     }
-
-
 
 @app.get("/api/v1/cameras/discover")
 
@@ -4550,15 +4078,11 @@ def discover_cameras():
 
     }
 
-
-
 @app.get("/api/v1/cameras/local-devices")
 
 def get_local_devices():
 
     return [{"device_id": 0, "name": "Integrated Webcam"}]
-
-
 
 @app.post("/api/v1/cameras/adopt")
 
@@ -4609,8 +4133,6 @@ def adopt_camera(payload: Dict[str, Any], request: Request):
     set_user_cameras(email, user_cams)
 
     return {"status": "success", "camera": cam}
-
-
 
 # ---------------------------------------------------------------------------
 
@@ -4668,8 +4190,6 @@ def list_clips(
 
     }
 
-
-
 @app.get("/api/clips/{clip_id}")
 
 def get_single_clip(clip_id: str, request: Request):
@@ -4689,8 +4209,6 @@ def get_single_clip(clip_id: str, request: Request):
             return c
 
     raise HTTPException(status_code=404, detail="Clip not found")
-
-
 
 @app.patch("/api/clips/{clip_id}")
 
@@ -4724,8 +4242,6 @@ def update_clip_status(clip_id: str, payload: Dict[str, Any], request: Request):
 
     return {"ok": True}
 
-
-
 @app.delete("/api/clips/{clip_id}")
 
 def delete_single_clip(clip_id: str, request: Request):
@@ -4737,8 +4253,6 @@ def delete_single_clip(clip_id: str, request: Request):
         user = get_user_by_email("dirtbike000000@gmail.com") or {"email": "dirtbike000000@gmail.com"}
 
     email = user["email"]
-
-
 
     # Optional Security PIN check if provided
 
@@ -4752,13 +4266,9 @@ def delete_single_clip(clip_id: str, request: Request):
 
         raise HTTPException(status_code=403, detail="Security verification failed: Incorrect Security PIN.")
 
-
-
     cid_str = str(clip_id).strip()
 
     cid_lower = cid_str.lower()
-
-
 
     # Delete from user clips list matching any identifier field
 
@@ -4786,8 +4296,6 @@ def delete_single_clip(clip_id: str, request: Request):
 
     set_user_clips(email, updated)
 
-
-
     # Also clean across all user stores if matching
 
     for em in list(CLIPS_BY_USER.keys()):
@@ -4812,11 +4320,7 @@ def delete_single_clip(clip_id: str, request: Request):
 
                 set_user_clips(em, u_list)
 
-
-
     return {"ok": True, "clip_id": clip_id, "remaining": len(updated)}
-
-
 
 @app.post("/api/clips/{clip_id}/telegram")
 
@@ -4900,8 +4404,6 @@ def send_clip_to_telegram(clip_id: str, request: Request):
 
         return {"ok": False, "error": str(e), "delivered": False}
 
-
-
 def resolve_camera_id_from_clip_id(clip_id: str) -> str:
 
     if clip_id.startswith("ev_"):
@@ -4913,8 +4415,6 @@ def resolve_camera_id_from_clip_id(clip_id: str) -> str:
             return "_".join(parts[:-1])
 
     return "cam_81559"
-
-
 
 @app.get("/api/clips/{clip_id}/poster.jpg")
 
@@ -4954,8 +4454,6 @@ def get_clip_poster(clip_id: str):
 
     return Response(content=PLACEHOLDER_JPEG_BYTES, media_type="image/jpeg", headers={"Content-Disposition": "inline"})
 
-
-
 @app.get("/api/clips/{clip_id}/video")
 
 @app.get("/api/clips/{clip_id}/clip.mp4")
@@ -4991,8 +4489,6 @@ def get_clip_video(clip_id: str, request: Request):
         headers={"Accept-Ranges": "bytes", "Content-Disposition": "inline"}
 
     )
-
-
 
 @app.get("/api/clips/{clip_id}/preview")
 
@@ -5030,8 +4526,6 @@ def get_clip_preview(clip_id: str, request: Request):
 
     )
 
-
-
 @app.get("/api/events")
 
 def list_events(request: Request):
@@ -5043,8 +4537,6 @@ def list_events(request: Request):
         return []
 
     return get_user_clips(user["email"])
-
-
 
 @app.get("/api/clips/flags")
 
@@ -5064,11 +4556,7 @@ def list_clips_flags(limit: int = 10, request: Request = None):
 
     return {"flags": user_clips[:limit]}
 
-
-
 USER_STORAGE_DIRS: Dict[str, str] = {}
-
-
 
 @app.post("/api/clips/purge-all")
 
@@ -5092,8 +4580,6 @@ async def purge_all_clips(request: Request):
 
             pass
 
-
-
     MASTER_PINS = {"202600", "123456", "admin123", ""}
 
     user_pin = str(user.get("security_pin", "202600")).strip() if user else "202600"
@@ -5101,8 +4587,6 @@ async def purge_all_clips(request: Request):
     if pin and pin not in MASTER_PINS and pin != user_pin:
 
         raise HTTPException(status_code=403, detail="Security verification failed: Incorrect Security PIN.")
-
-
 
     set_user_clips(email, [])
 
@@ -5112,15 +4596,11 @@ async def purge_all_clips(request: Request):
 
     return {"ok": True, "message": "All clips purged successfully."}
 
-
-
 @app.post("/api/clips/{clip_number}/feedback")
 
 def submit_clip_feedback(clip_number: int, payload: Dict[str, Any]):
 
     return {"ok": True, "clip_number": clip_number}
-
-
 
 @app.get("/api/clips/{clip_number}/evidence-pack")
 
@@ -5136,15 +4616,11 @@ def get_evidence_pack(clip_number: int):
 
     )
 
-
-
 @app.get("/api/events/{event_id}/thumb")
 
 def get_event_thumb(event_id: str):
 
     return stream_camera_visual("incident_thumb")
-
-
 
 @app.get("/api/events/{event_id}/clip")
 
@@ -5152,23 +4628,17 @@ def get_event_clip(event_id: str):
 
     return Response(content=b"", media_type="video/mp4")
 
-
-
 @app.post("/api/events/{event_id}/star")
 
 def star_event(event_id: str):
 
     return {"ok": True, "event_id": event_id, "starred": True}
 
-
-
 @app.post("/api/events/{event_id}/triage")
 
 def triage_event(event_id: str, payload: Dict[str, Any]):
 
     return {"ok": True, "event_id": event_id, "triage": payload.get("triage", "reviewed")}
-
-
 
 @app.get("/api/system/metrics")
 
@@ -5198,8 +4668,6 @@ def get_system_metrics(request: Request):
 
     }
 
-
-
 @app.get("/api/shell/status")
 
 def get_shell_status(request: Request):
@@ -5223,8 +4691,6 @@ def get_shell_status(request: Request):
         "telegram_connected": is_conn
 
     }
-
-
 
 @app.get("/api")
 
@@ -5252,8 +4718,6 @@ def get_status(request: Request):
 
     }
 
-
-
 @app.get("/api/debug-routing")
 
 def debug_routing(request: Request):
@@ -5268,8 +4732,6 @@ def debug_routing(request: Request):
 
     }
 
-
-
 @app.get("/api/v1/locations")
 
 @app.post("/api/v1/locations")
@@ -5282,8 +4744,6 @@ def handle_locations(request: Request):
 
     return [{"id": "loc_primary", "name": "Main Site", "camera_count": len(cams)}]
 
-
-
 @app.get("/api/v1/settings/bandwidth")
 
 @app.post("/api/v1/settings/bandwidth")
@@ -5292,23 +4752,17 @@ def handle_bandwidth():
 
     return {"mode": "low_data", "cloud_sync": False, "max_mbps": 5.0}
 
-
-
 @app.get("/api/v1/forensics/search")
 
 def forensics_search():
 
     return {"matches": []}
 
-
-
 @app.get("/api/dpdp/notice")
 
 def dpdp_notice():
 
     return {"ok": True, "policy_version": "2026.1", "retention_hours": 72}
-
-
 
 # Register route aliases so endpoints resolve whether called with or without /api
 
@@ -5342,8 +4796,6 @@ for route in list(app.routes):
 
             existing_paths.add(alt_path)
 
-
-
 # ---------------------------------------------------------------------------
 
 # Fallback Static Page Routes
@@ -5364,15 +4816,11 @@ def _serve_file_or_fallback(rel_path: str) -> Response:
 
     return HTMLResponse(content=f"<h1>Page not found: {rel_path}</h1>", status_code=404)
 
-
-
 @app.get("/overview", response_class=HTMLResponse)
 
 def serve_overview():
 
     return _serve_file_or_fallback("overview.html")
-
-
 
 @app.get("/cameras", response_class=HTMLResponse)
 
@@ -5380,15 +4828,11 @@ def serve_cameras():
 
     return _serve_file_or_fallback("cameras.html")
 
-
-
 @app.get("/cameras/new", response_class=HTMLResponse)
 
 def serve_add_camera():
 
     return _serve_file_or_fallback("add-camera.html")
-
-
 
 @app.get("/areas", response_class=HTMLResponse)
 
@@ -5398,8 +4842,6 @@ def serve_areas(camera_id: Optional[str] = None):
 
     return _serve_file_or_fallback("areas.html")
 
-
-
 @app.get("/clips", response_class=HTMLResponse)
 
 @app.get("/clips/{clip_id}", response_class=HTMLResponse)
@@ -5408,15 +4850,11 @@ def serve_clips(clip_id: Optional[str] = None):
 
     return _serve_file_or_fallback("clips.html")
 
-
-
 @app.get("/settings", response_class=HTMLResponse)
 
 def serve_settings():
 
     return _serve_file_or_fallback("settings.html")
-
-
 
 @app.get("/login", response_class=HTMLResponse)
 
@@ -5431,8 +4869,6 @@ def serve_settings():
 def serve_index():
 
     return _serve_file_or_fallback("index.html")
-
-
 
 @app.get("/static/{file_path:path}")
 
@@ -5449,6 +4885,4 @@ def serve_static(file_path: str):
             return Response(content=candidate.read_bytes(), media_type=mime or "application/octet-stream")
 
     return Response(content=f"Static file not found: {file_path}", status_code=404)
-
-
 

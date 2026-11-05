@@ -5,16 +5,18 @@
 /* Fullscreen Wall Container */
 #wall-view-container {
   display: none;
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: #000000;
-  z-index: 999999;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  box-sizing: border-box;
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background-color: #000000 !important;
+  z-index: 9999999 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
   font-family: var(--font-ui, "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   user-select: none;
   -webkit-user-select: none;
@@ -25,10 +27,14 @@
 #wall-view-container:-webkit-full-screen {
   display: flex !important;
   flex-direction: column !important;
-  width: 100% !important;
-  height: 100% !important;
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
   background-color: #000000 !important;
-  z-index: 999999 !important;
+  z-index: 9999999 !important;
 }
 
 /* In simple terms: auto-hide cursor and control bars when idle for 3 seconds */

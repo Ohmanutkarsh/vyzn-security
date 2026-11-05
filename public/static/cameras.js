@@ -40,20 +40,11 @@ async function checkEdgeServer() {
   return edgeBaseUrl;
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  await initI18n();
-  initShell({ activePage: 'cameras' });
-
-  // Set page title
-  const titleEl = document.getElementById('page-title-text');
-  if (titleEl) titleEl.textContent = t('cameras.page_title', 'Cameras');
-
-  await loadCameras();
-  attachEventListeners();
-
-  // Snapshot refresh every 8 seconds per spec
-  setInterval(refreshSnapshots, 8000);
-});
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initCamerasPage);
+} else {
+  initCamerasPage();
+}
 
 async function loadCameras() {
   const grid = document.getElementById('cameras-grid');

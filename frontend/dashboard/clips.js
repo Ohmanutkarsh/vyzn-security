@@ -21,23 +21,11 @@ const currentFilters = {
   when: 'last_72h'
 };
 
-document.addEventListener('DOMContentLoaded', async () => {
-  await initI18n();
-  initShell({ activePage: 'clips' });
-  initClipDrawer({ onClipUpdated: () => loadClips() });
-
-  const titleEl = document.getElementById('page-title-text');
-  if (titleEl) titleEl.textContent = 'Clips';
-
-  await loadCamerasList();
-  readFiltersFromUrl();
-  bindFilterEvents();
-  await loadClips();
-  attachPurgeHandler();
-
-  // Check if deep link opened specific clip: /clips/:id
-  checkDeepLink();
-});
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initClipsPage);
+} else {
+  initClipsPage();
+}
 
 /**
  * Loads cameras to populate the filter dropdowns.

@@ -66,22 +66,8 @@ async function checkEdgeServer() {
   return edgeBaseUrl;
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  await initI18n();
-  initShell({ activePage: 'areas' });
-  await checkEdgeServer();
-
-  // Resolve camera ID from URL path or query parameter
-  const pathParts = window.location.pathname.split('/').filter(Boolean);
-  // /areas/:cameraId or /areas
-  if (pathParts.length >= 2 && pathParts[0] === 'areas') {
-    currentCameraId = pathParts[1];
-  } else {
-    const urlParams = new URLSearchParams(window.location.search);
-    currentCameraId = urlParams.get('camera_id') || urlParams.get('id');
-  }
-
-  await routeView();
+async function startAreas() {
+  await initAreasPage();
 
   window.addEventListener('beforeunload', (e) => {
     if (isDirty) {
@@ -90,7 +76,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       return e.returnValue;
     }
   });
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startAreas);
+} else {
+  startAreas();
+}
 
 async function routeView() {
   const main = document.getElementById('main-content');
@@ -351,7 +343,7 @@ async function captureLiveCameraSnapshot(camId) {
 }
 
 function buildEditorDom(container) {
-  const camName = currentCamera ? currentCamera.camera_name : 'Camera 1';
+  const camName = currentCamera ? (currentCamera.name || currentCamera.camera_name || 'Camera 1') : 'Camera 1';
   const ignoredCount = currentCamera ? (currentCamera.ignored_moments_count || 0) : 0;
   const ignoredBanner = ignoredCount > 0 
     ? `<div class="ignored-stats-banner">
@@ -593,7 +585,6 @@ function attachSidebarEventListeners() {
         btnUpdatePic.disabled = false;
       }
     };
-  };
   }
 
   // Periodic background refresh of canvas-img every 10 seconds if user is not actively drawing
@@ -1590,5 +1581,16 @@ window.getWatchAreas = () => watchAreas;
 export async function initAreasPage() {
   await initI18n();
   initShell({ activePage: 'areas' });
-  await initAreas();
+  await checkEdgeServer();
+
+  // Resolve camera ID from URL path or query parameter
+  const pathParts = window.location.pathname.split('/').filter(Boolean);
+  if (pathParts.length >= 2 && pathParts[0] === 'areas') {
+    currentCameraId = pathParts[1];
+  } else {
+    const urlParams = new URLSearchParams(window.location.search);
+    currentCameraId = urlParams.get('camera_id') || urlParams.get('id');
+  }
+
+  await routeView();
 }

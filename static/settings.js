@@ -1,20 +1,11 @@
 import { initShell, promptSecurityPin } from './components/shell.js';
 import { escapeHtml } from './utils.js';
 
-document.addEventListener('DOMContentLoaded', async () => {
-  initShell({ activePage: 'settings' });
-
-  const titleEl = document.getElementById('page-title-text');
-  if (titleEl) titleEl.textContent = 'Settings';
-
-  await loadProfile();
-  initThemeControls();
-  initPhoneControls();
-  initSecurityPinControls();
-  await initTelegramControls();
-  await initBusinessHoursControls();
-  await initStorageControls();
-});
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSettingsPage);
+} else {
+  initSettingsPage();
+}
 
 function showToast(message, isError = false) {
   const toast = document.getElementById('toast-notification');
