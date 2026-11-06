@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   attachStep2Events();
   attachStep3Events();
   attachStepperNavigation();
+  checkCameraQuota();
 
   window.runConnectionTest = runConnectionTest;
 });
@@ -148,7 +149,14 @@ function attachStepperNavigation() {
 
 function attachStep1Events() {
   document.querySelectorAll('[data-choice]').forEach(card => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
+      if (userAvailableQuota === 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        alert('No camera quota available. You must purchase a camera plan in Settings before connecting a new camera.');
+        window.location.href = '/settings#card-camera-plan';
+        return;
+      }
       currentChoice = card.getAttribute('data-choice');
       setWizardStep('step-2', 'Step 2 of 3');
 
@@ -781,7 +789,13 @@ function attachStep3Events() {
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.detail || 'Save failed');
+          if (res.status === 402 || (typeof errData.detail === 'object' && errData.detail?.error === 'QUOTA_EXHAUSTED') || (typeof errData.detail === 'string' && errData.detail.includes('quota'))) {
+            alert('Camera quota exhausted. You have 0 available camera slots. Redirecting to Settings to purchase quota.');
+            window.location.href = '/settings#card-camera-plan';
+            return;
+          }
+          const msg = typeof errData.detail === 'string' ? errData.detail : (errData.detail?.message || 'Save failed');
+          throw new Error(msg);
         }
         const data = await res.json();
         createdCameraId = data.id || data.camera_id;
@@ -825,5 +839,49 @@ function attachStep3Events() {
       const resultContainer = document.getElementById('test-result-container');
       if (resultContainer) resultContainer.style.display = 'none';
     });
+  }
+}
+
+
+let userAvailableQuota = 999;
+
+async function checkCameraQuota() {
+  try {
+    const res = await fetch('/billing/quota', { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    userAvailableQuota = data.available;
+
+    const purEl = document.getElementById('add-cam-quota-purchased');
+    const usedEl = document.getElementById('add-cam-quota-used');
+    const availEl = document.getElementById('add-cam-quota-available');
+
+    if (purEl) purEl.textContent = data.purchased;
+    if (usedEl) usedEl.textContent = data.used;
+    if (availEl) {
+      availEl.textContent = data.available;
+      if (data.available === 0) {
+        availEl.style.color = '#ef4444';
+      } else {
+        availEl.style.color = '#10b981';
+      }
+    }
+
+    if (data.available === 0) {
+      const alertBox = document.getElementById('add-cam-quota-exhausted-alert');
+      const usedWarn = document.getElementById('quota-used-warn');
+      const purWarn = document.getElementById('quota-purchased-warn');
+      if (usedWarn) usedWarn.textContent = data.used;
+      if (purWarn) purWarn.textContent = data.purchased;
+      if (alertBox) alertBox.style.display = 'block';
+
+      // Visually disable connection cards
+      document.querySelectorAll('.option-card').forEach(card => {
+        card.style.opacity = '0.45';
+        card.style.cursor = 'not-allowed';
+      });
+    }
+  } catch (err) {
+    console.error('Error fetching camera quota:', err);
   }
 }

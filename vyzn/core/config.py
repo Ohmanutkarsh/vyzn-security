@@ -49,6 +49,15 @@ class ClipConfig(BaseModel):
     preview_seconds: float = 0.0
 
 
+class BillingConfig(BaseModel):
+    price_per_camera_paise: int = 249900
+    max_cameras_per_order: int = 20
+    order_expiry_minutes: int = 30
+    billing_enforcement: bool = False
+    upi_vpa: str = "vyzn.security@okaxis"
+    upi_payee_name: str = "VYZN Security"
+
+
 class LocationConfig(BaseModel):
     location_id: str
     name: str
@@ -105,6 +114,7 @@ class EdgeSettings(BaseSettings):
     post_roll_sec: float = 10.0
     event_inactivity_gap_sec: float = 90.0
     clip: ClipConfig = Field(default_factory=ClipConfig)
+    billing: BillingConfig = Field(default_factory=BillingConfig)
 
     # Explicit State Machine & Motion Gate Parameters (Step 1, 2, 5)
     confirm_window_frames: int = 5

@@ -1,3 +1,20 @@
+
+from vyzn.billing.manager import (
+    get_quota_overview,
+    create_quota_order,
+    list_orders_for_tenant,
+    list_pending_orders_for_admin,
+    list_all_orders_for_admin,
+    get_order,
+    submit_order_utr,
+    approve_order,
+    reject_order,
+    handle_admin_telegram_callback,
+    is_admin_user,
+    is_billing_enforced,
+    get_tenant_purchased_quota,
+    check_rate_limit,
+)
 """
 
 Vercel Serverless Entry Point for VYZN Platform.
@@ -3118,6 +3135,23 @@ def add_camera(payload: CameraCreateRequest, request: Request):
         raise HTTPException(status_code=401, detail="Authentication required")
 
     email = user["email"]
+    tenant_id = user.get("tenant_id") or user.get("id") or f"usr_{hashlib.sha256(email.lower().encode()).hexdigest()[:12]}"
+
+    if is_billing_enforced():
+        user_cams = get_user_cameras(email)
+        used_count = len(user_cams)
+        purchased_quota = get_tenant_purchased_quota(tenant_id, default_used=used_count)
+        if used_count >= purchased_quota:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "QUOTA_EXHAUSTED",
+                    "message": "Camera quota exhausted. You have 0 available camera slots. Please add a camera plan in Settings.",
+                    "purchased": purchased_quota,
+                    "used": used_count,
+                    "available": 0
+                }
+            )
 
     new_id = f"cam_{int(time.time() * 1000) % 100000}"
 
@@ -4091,6 +4125,23 @@ def adopt_camera(payload: Dict[str, Any], request: Request):
     user = get_current_user(request)
 
     email = user["email"] if user else "guest"
+    tenant_id = (user.get("tenant_id") or user.get("id")) if user else f"usr_{hashlib.sha256(email.lower().encode()).hexdigest()[:12]}"
+
+    if is_billing_enforced():
+        user_cams = get_user_cameras(email)
+        used_count = len(user_cams)
+        purchased_quota = get_tenant_purchased_quota(tenant_id, default_used=used_count)
+        if used_count >= purchased_quota:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "QUOTA_EXHAUSTED",
+                    "message": "Camera quota exhausted. You have 0 available camera slots. Please add a camera plan in Settings.",
+                    "purchased": purchased_quota,
+                    "used": used_count,
+                    "available": 0
+                }
+            )
 
     new_id = f"cam_{int(time.time() * 1000) % 100000}"
 
@@ -4869,6 +4920,148 @@ def serve_settings():
 def serve_index():
 
     return _serve_file_or_fallback("index.html")
+
+
+# ===========================================================================
+# Camera Quota & Manual UPI Billing Endpoints
+# ===========================================================================
+
+class QuotaOrderCreateRequest(BaseModel):
+    quantity: int
+
+class SubmitUtrRequest(BaseModel):
+    utr: str
+
+class RejectOrderRequest(BaseModel):
+    reason: Optional[str] = "UTR not verified on bank statement"
+
+@app.get("/billing/quota")
+@app.get("/api/billing/quota")
+def get_billing_quota(request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    email = user["email"]
+    tenant_id = user.get("tenant_id") or user.get("id") or f"usr_{hashlib.sha256(email.lower().encode()).hexdigest()[:12]}"
+    cams = get_user_cameras(email)
+    used = len(cams)
+    return get_quota_overview(tenant_id, used)
+
+@app.post("/billing/quota-orders")
+@app.post("/api/billing/quota-orders")
+def post_quota_order(payload: QuotaOrderCreateRequest, request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    email = user["email"]
+    tenant_id = user.get("tenant_id") or user.get("id") or f"usr_{hashlib.sha256(email.lower().encode()).hexdigest()[:12]}"
+    user_id = user.get("id") or tenant_id
+    ok, order, err = create_quota_order(tenant_id=tenant_id, user_id=user_id, quantity=payload.quantity, user_email=email)
+    if not ok:
+        raise HTTPException(status_code=400, detail={"error": err, "active_order": order if isinstance(order, dict) else None})
+    return order
+
+@app.get("/billing/quota-orders")
+@app.get("/api/billing/quota-orders")
+def get_quota_orders(request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    tenant_id = user.get("tenant_id") or user.get("id") or f"usr_{hashlib.sha256(user['email'].lower().encode()).hexdigest()[:12]}"
+    return list_orders_for_tenant(tenant_id)
+
+@app.get("/billing/quota-orders/{order_id}")
+@app.get("/api/billing/quota-orders/{order_id}")
+def get_quota_order_by_id(order_id: str, request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    order = get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    tenant_id = user.get("tenant_id") or user.get("id") or f"usr_{hashlib.sha256(user['email'].lower().encode()).hexdigest()[:12]}"
+    if order.get("tenant_id") != tenant_id and not is_admin_user(user):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return order
+
+@app.post("/billing/quota-orders/{order_id}/submit-utr")
+@app.post("/api/billing/quota-orders/{order_id}/submit-utr")
+def submit_utr_endpoint(order_id: str, payload: SubmitUtrRequest, request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    tenant_id = user.get("tenant_id") or user.get("id") or f"usr_{hashlib.sha256(user['email'].lower().encode()).hexdigest()[:12]}"
+    
+    # Rate limit check (max 5 attempts per 60 seconds)
+    client_ip = request.client.host if request.client else tenant_id
+    rate_key = f"{tenant_id}:{client_ip}"
+    if not check_rate_limit(rate_key, max_attempts=5, window_sec=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please wait a minute before submitting again.")
+
+    order = get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.get("tenant_id") != tenant_id and not is_admin_user(user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    ok, err, updated_order = submit_order_utr(order_id, payload.utr, actor_id=user.get("id", tenant_id), actor_email=user.get("email", ""))
+    if not ok:
+        status_code = 409 if "already been submitted" in (err or "") else 400
+        raise HTTPException(status_code=status_code, detail=err)
+    return {"ok": True, "order": updated_order, "message": "UTR submitted successfully. Payments are verified manually."}
+
+@app.get("/admin/billing", response_class=HTMLResponse)
+def serve_admin_billing():
+    return _serve_file_or_fallback("admin-billing.html")
+
+@app.get("/admin/billing/pending")
+@app.get("/api/admin/billing/pending")
+def admin_get_pending_orders(request: Request):
+    user = get_current_user(request)
+    if not is_admin_user(user):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return {
+        "pending": list_pending_orders_for_admin(),
+        "all": list_all_orders_for_admin()
+    }
+
+@app.post("/admin/billing/orders/{order_id}/approve")
+@app.post("/api/admin/billing/orders/{order_id}/approve")
+def admin_approve_order(order_id: str, request: Request):
+    user = get_current_user(request)
+    if not is_admin_user(user):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    admin_name = user.get("email") or user.get("id") or "admin"
+    ok, err, new_quota = approve_order(order_id, verified_by=admin_name)
+    if not ok:
+        raise HTTPException(status_code=400, detail=err)
+    return {"ok": True, "status": "paid", "new_quota": new_quota, "order_id": order_id}
+
+@app.post("/admin/billing/orders/{order_id}/reject")
+@app.post("/api/admin/billing/orders/{order_id}/reject")
+def admin_reject_order(order_id: str, payload: Optional[RejectOrderRequest] = None, request: Request = None):
+    user = get_current_user(request)
+    if not is_admin_user(user):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    admin_name = user.get("email") or user.get("id") or "admin"
+    reason = payload.reason if payload and payload.reason else "UTR not verified on bank statement"
+    ok, err = reject_order(order_id, verified_by=admin_name, reason=reason)
+    if not ok:
+        raise HTTPException(status_code=400, detail=err)
+    return {"ok": True, "status": "rejected", "order_id": order_id, "reason": reason}
+
+@app.post("/api/admin/telegram-webhook")
+async def admin_telegram_webhook(request: Request):
+    try:
+        body = await request.json()
+        cq = body.get("callback_query")
+        if cq:
+            res = handle_admin_telegram_callback(cq)
+            return res
+        return {"ok": True, "ignored": True}
+    except Exception as e:
+        logger.error(f"Error handling Telegram webhook: {e}")
+        return {"ok": False, "error": str(e)}
 
 @app.get("/static/{file_path:path}")
 

@@ -89,3 +89,77 @@ CREATE POLICY "Allow anon and service_role access to vyzn_alert_deliveries"
 
 -- Enable Realtime broadcasting if needed
 ALTER PUBLICATION supabase_realtime ADD TABLE public.vyzn_users;
+
+-- ========================================================================
+-- 5. Camera Quota & Manual UPI Billing
+-- ========================================================================
+
+CREATE TABLE IF NOT EXISTS public.camera_quota (
+    tenant_id TEXT PRIMARY KEY,
+    purchased INT NOT NULL DEFAULT 0 CHECK (purchased >= 0),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.quota_orders (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    quantity INT NOT NULL CHECK (quantity > 0),
+    unit_price_paise BIGINT NOT NULL,
+    amount_paise BIGINT NOT NULL,
+    order_code TEXT UNIQUE NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('awaiting_payment', 'submitted', 'paid', 'rejected', 'expired')),
+    utr TEXT UNIQUE,
+    submitted_at TIMESTAMPTZ,
+    verified_by TEXT,
+    verified_at TIMESTAMPTZ,
+    reject_reason TEXT,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_quota_orders_active ON public.quota_orders (tenant_id)
+WHERE status IN ('awaiting_payment', 'submitted');
+
+CREATE INDEX IF NOT EXISTS idx_quota_orders_tenant ON public.quota_orders (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_quota_orders_status ON public.quota_orders (status);
+CREATE INDEX IF NOT EXISTS idx_quota_orders_utr ON public.quota_orders (utr);
+
+CREATE TABLE IF NOT EXISTS public.payment_audit (
+    id TEXT PRIMARY KEY,
+    order_id TEXT NOT NULL REFERENCES public.quota_orders(id) ON DELETE CASCADE,
+    actor TEXT NOT NULL,
+    action TEXT NOT NULL,
+    detail JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_payment_audit_order ON public.payment_audit (order_id);
+
+ALTER TABLE public.camera_quota ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quota_orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payment_audit ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow anon and service_role access to camera_quota"
+    ON public.camera_quota
+    FOR ALL
+    TO anon, authenticated, service_role
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Allow anon and service_role access to quota_orders"
+    ON public.quota_orders
+    FOR ALL
+    TO anon, authenticated, service_role
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Allow anon and service_role access to payment_audit"
+    ON public.payment_audit
+    FOR ALL
+    TO anon, authenticated, service_role
+    USING (true)
+    WITH CHECK (true);
+

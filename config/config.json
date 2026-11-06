@@ -8,5 +8,10 @@
     "min_active_ticks": 1,
     "max_clip_seconds": null,
     "preview_seconds": 0
+  },
+  "billing": {
+    "price_per_camera_paise": 249900,
+    "max_cameras_per_order": 20,
+    "order_expiry_minutes": 30
   }
 }

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Billing & Quota Verifications — VYZN</title>
+  <link rel="stylesheet" href="/static/tokens.css">
+  <link rel="stylesheet" href="/static/components/ui.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: var(--bg-canvas, #090d16);
+      color: var(--text-1, #f8fafc);
+      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .admin-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 24px 64px 24px;
+    }
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .admin-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0 0 6px 0;
+    }
+    .admin-subtitle {
+      font-size: 14px;
+      color: #94a3b8;
+      margin: 0;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background: var(--bg-1, #121826);
+      border: 1px solid var(--border-subtle, #1e293b);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .stat-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-size: 26px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+    .panel {
+      background: var(--bg-1, #121826);
+      border: 1px solid var(--border-subtle, #1e293b);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .panel-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+    .admin-table th {
+      border-bottom: 1px solid #1e293b;
+      padding: 10px 12px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+    .admin-table td {
+      border-bottom: 1px solid #1e293b;
+      padding: 12px;
+      vertical-align: middle;
+    }
+    .btn-approve {
+      background: #10b981;
+      color: #ffffff;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 150ms;
+    }
+    .btn-approve:hover {
+      background: #059669;
+    }
+    .btn-reject {
+      background: transparent;
+      color: #ef4444;
+      border: 1px solid #ef4444;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      margin-left: 6px;
+      transition: all 150ms;
+    }
+    .btn-reject:hover {
+      background: rgba(239, 68, 68, 0.1);
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-paid {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+      border: 1px solid #10b981;
+    }
+    .badge-submitted {
+      background: rgba(245, 158, 11, 0.2);
+      color: #f59e0b;
+      border: 1px solid #f59e0b;
+    }
+    .badge-awaiting {
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      border: 1px solid #38bdf8;
+    }
+    .badge-rejected {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      border: 1px solid #ef4444;
+    }
+    .badge-expired {
+      background: #1e293b;
+      color: #64748b;
+    }
+    .utr-code {
+      font-family: 'IBM Plex Mono', monospace;
+      color: #38bdf8;
+      background: #0f172a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <div class="admin-header">
+      <div>
+        <h1 class="admin-title">💳 Manual UPI Billing Verifications</h1>
+        <p class="admin-subtitle">Verify 12-digit UTR references from bank statement and credit camera quota to customers.</p>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button id="btn-refresh-orders" style="background: #1e293b; color: #e2e8f0; border: 1px solid #334155; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;">
+          🔄 Refresh
+        </button>
+        <a href="/settings" style="background: transparent; color: #38bdf8; border: 1px solid #38bdf8; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; text-decoration: none;">
+          Settings
+        </a>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Pending Verification</div>
+        <div class="stat-value" id="stat-pending" style="color: #f59e0b;">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Approved Orders</div>
+        <div class="stat-value" id="stat-approved" style="color: #10b981;">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Verified Revenue</div>
+        <div class="stat-value" id="stat-revenue" style="color: #38bdf8;">₹0.00</div>
+      </div>
+    </div>
+
+    <!-- Section 1: Pending Orders Requiring Verification -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>⏳</span>
+          <span>Pending Verifications (Action Required)</span>
+        </div>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Order Code</th>
+              <th>Customer / Tenant</th>
+              <th>Cameras</th>
+              <th>Amount</th>
+              <th>12-Digit UTR (Bank Ref)</th>
+              <th>Submitted At</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="table-pending-orders">
+            <tr>
+              <td colspan="7" style="text-align: center; color: #64748b; padding: 24px;">Loading pending orders...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Section 2: All Quota Orders History -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>📜</span>
+          <span>Complete Quota Orders Log</span>
+        </div>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Order Code</th>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Cameras</th>
+              <th>Amount</th>
+              <th>UTR</th>
+              <th>Verified By</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="table-all-orders">
+            <tr>
+              <td colspan="8" style="text-align: center; color: #64748b; padding: 24px;">Loading order history...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="padding: 14px 18px; background: rgba(30, 41, 59, 0.5); border: 1px solid #1e293b; border-radius: 8px; font-size: 13px; color: #94a3b8; display: flex; align-items: center; gap: 10px;">
+      <span>ℹ️</span>
+      <span><strong>Verification Rule:</strong> Always check your personal UPI / Bank statement for the exact 12-digit UTR before clicking <em>Approve</em>. Approving instantly credits the camera slots to the customer's account and logs an immutable audit event.</span>
+    </div>
+  </div>
+
+  <script type="module" src="/static/admin-billing.js"></script>
+</body>
+</html>

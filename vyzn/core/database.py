@@ -246,6 +246,47 @@ class DatabaseWriterWorker(threading.Thread):
         );
         CREATE INDEX IF NOT EXISTS idx_alert_deliveries_event ON alert_deliveries(event_id);
         CREATE INDEX IF NOT EXISTS idx_alert_deliveries_status ON alert_deliveries(status);
+
+        CREATE TABLE IF NOT EXISTS camera_quota (
+            tenant_id TEXT PRIMARY KEY,
+            purchased INTEGER NOT NULL DEFAULT 0,
+            created_at_ms INTEGER NOT NULL,
+            updated_at_ms INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS quota_orders (
+            id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            unit_price_paise INTEGER NOT NULL,
+            amount_paise INTEGER NOT NULL,
+            order_code TEXT UNIQUE NOT NULL,
+            status TEXT NOT NULL,
+            utr TEXT UNIQUE,
+            submitted_at TEXT,
+            verified_by TEXT,
+            verified_at TEXT,
+            reject_reason TEXT,
+            expires_at TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_quota_orders_active ON quota_orders(tenant_id)
+        WHERE status IN ('awaiting_payment', 'submitted');
+        CREATE INDEX IF NOT EXISTS idx_quota_orders_tenant ON quota_orders(tenant_id);
+        CREATE INDEX IF NOT EXISTS idx_quota_orders_status ON quota_orders(status);
+        CREATE INDEX IF NOT EXISTS idx_quota_orders_utr ON quota_orders(utr);
+
+        CREATE TABLE IF NOT EXISTS payment_audit (
+            id TEXT PRIMARY KEY,
+            order_id TEXT NOT NULL,
+            actor TEXT NOT NULL,
+            action TEXT NOT NULL,
+            detail_json TEXT,
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_payment_audit_order ON payment_audit(order_id);
         """)
         try:
             conn.execute("ALTER TABLE events ADD COLUMN user_triage TEXT DEFAULT 'unreviewed';")
@@ -2146,3 +2187,205 @@ class EventDatabase:
         self.writer.running = False
         self.writer.queue.put(None)
         self.writer.join(timeout=3.0)
+
+    # =========================================================================
+    # Camera Quota & Manual UPI Billing Operations
+    # =========================================================================
+
+    def get_camera_quota(self, tenant_id: str) -> int:
+        """Returns purchased camera quota for tenant, defaulting to 0."""
+        conn = self._get_read_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT purchased FROM camera_quota WHERE tenant_id = ?", (tenant_id,))
+            row = cur.fetchone()
+            if row:
+                return int(row[0])
+            return 0
+        finally:
+            conn.close()
+
+    def set_camera_quota(self, tenant_id: str, purchased: int) -> None:
+        """Sets absolute purchased camera quota for tenant."""
+        now_ms = int(time.time() * 1000)
+        sql = """
+            INSERT INTO camera_quota (tenant_id, purchased, created_at_ms, updated_at_ms)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(tenant_id) DO UPDATE SET purchased = excluded.purchased, updated_at_ms = excluded.updated_at_ms
+        """
+        self.writer.queue.put((sql, (tenant_id, max(0, purchased), now_ms, now_ms), None))
+        self.flush()
+
+    def increment_camera_quota(self, tenant_id: str, quantity: int) -> int:
+        """Atomically increments purchased quota and returns the new value."""
+        now_ms = int(time.time() * 1000)
+        current = self.get_camera_quota(tenant_id)
+        new_quota = current + max(0, quantity)
+        sql = """
+            INSERT INTO camera_quota (tenant_id, purchased, created_at_ms, updated_at_ms)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(tenant_id) DO UPDATE SET purchased = purchased + ?, updated_at_ms = ?
+        """
+        self.writer.queue.put((sql, (tenant_id, new_quota, now_ms, now_ms, quantity, now_ms), None))
+        self.flush()
+        return new_quota
+
+    def create_quota_order(self, order_dict: Dict[str, Any]) -> None:
+        """Persists a new camera quota order."""
+        sql = """
+            INSERT INTO quota_orders (
+                id, tenant_id, user_id, quantity, unit_price_paise, amount_paise,
+                order_code, status, utr, submitted_at, verified_by, verified_at,
+                reject_reason, expires_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        params = (
+            order_dict["id"],
+            order_dict["tenant_id"],
+            order_dict.get("user_id", order_dict["tenant_id"]),
+            order_dict["quantity"],
+            order_dict["unit_price_paise"],
+            order_dict["amount_paise"],
+            order_dict["order_code"],
+            order_dict.get("status", "awaiting_payment"),
+            order_dict.get("utr"),
+            order_dict.get("submitted_at"),
+            order_dict.get("verified_by"),
+            order_dict.get("verified_at"),
+            order_dict.get("reject_reason"),
+            order_dict["expires_at"],
+            order_dict.get("created_at", datetime.now(timezone.utc).isoformat()),
+            order_dict.get("updated_at", datetime.now(timezone.utc).isoformat())
+        )
+        self.writer.queue.put((sql, params, None))
+        self.flush()
+
+    def get_quota_order(self, order_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieves a single quota order by ID."""
+        conn = self._get_read_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM quota_orders WHERE id = ?", (order_id,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            cols = [col[0] for col in cur.description]
+            return dict(zip(cols, row))
+        finally:
+            conn.close()
+
+    def get_active_quota_order(self, tenant_id: str) -> Optional[Dict[str, Any]]:
+        """Finds any active order (awaiting_payment or submitted) for tenant."""
+        conn = self._get_read_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT * FROM quota_orders 
+                WHERE tenant_id = ? AND status IN ('awaiting_payment', 'submitted')
+                ORDER BY created_at DESC LIMIT 1
+            """, (tenant_id,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            cols = [col[0] for col in cur.description]
+            return dict(zip(cols, row))
+        finally:
+            conn.close()
+
+    def list_quota_orders(self, tenant_id: Optional[str] = None, status: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Lists quota orders with optional filtering."""
+        conn = self._get_read_conn()
+        try:
+            cur = conn.cursor()
+            query = "SELECT * FROM quota_orders"
+            params = []
+            clauses = []
+            if tenant_id:
+                clauses.append("tenant_id = ?")
+                params.append(tenant_id)
+            if status:
+                clauses.append("status = ?")
+                params.append(status)
+            if clauses:
+                query += " WHERE " + " AND ".join(clauses)
+            query += " ORDER BY created_at DESC"
+            cur.execute(query, tuple(params))
+            cols = [col[0] for col in cur.description]
+            return [dict(zip(cols, row)) for row in cur.fetchall()]
+        finally:
+            conn.close()
+
+    def submit_quota_order_utr(self, order_id: str, utr: str) -> bool:
+        """Transitions an awaiting_payment order to submitted with verified 12-digit UTR."""
+        now_iso = datetime.now(timezone.utc).isoformat()
+        sql = """
+            UPDATE quota_orders 
+            SET status = 'submitted', utr = ?, submitted_at = ?, updated_at = ?
+            WHERE id = ? AND status = 'awaiting_payment'
+        """
+        self.writer.queue.put((sql, (utr, now_iso, now_iso, order_id), None))
+        self.flush()
+        return True
+
+    def approve_quota_order(self, order_id: str, verified_by: str) -> Tuple[bool, int]:
+        """
+        Atomically approves order and credits quota. Strictly idempotent:
+        if order is already paid, does not double-credit.
+        Returns (success, current_purchased_quota).
+        """
+        order = self.get_quota_order(order_id)
+        if not order:
+            return False, 0
+        if order.get("status") == "paid":
+            current_quota = self.get_camera_quota(order["tenant_id"])
+            return True, current_quota
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        sql = """
+            UPDATE quota_orders
+            SET status = 'paid', verified_by = ?, verified_at = ?, updated_at = ?
+            WHERE id = ? AND status = 'submitted'
+        """
+        self.writer.queue.put((sql, (verified_by, now_iso, now_iso, order_id), None))
+        self.flush()
+
+        # Add quota
+        new_quota = self.increment_camera_quota(order["tenant_id"], order["quantity"])
+        self.log_payment_audit(
+            order_id=order_id,
+            actor=verified_by,
+            action="order_approved",
+            detail={"quantity": order["quantity"], "new_quota": new_quota}
+        )
+        return True, new_quota
+
+    def reject_quota_order(self, order_id: str, reason: str, verified_by: str) -> bool:
+        """Rejects a quota order."""
+        now_iso = datetime.now(timezone.utc).isoformat()
+        sql = """
+            UPDATE quota_orders
+            SET status = 'rejected', reject_reason = ?, verified_by = ?, verified_at = ?, updated_at = ?
+            WHERE id = ? AND status IN ('awaiting_payment', 'submitted')
+        """
+        self.writer.queue.put((sql, (reason, verified_by, now_iso, now_iso, order_id), None))
+        self.flush()
+        self.log_payment_audit(
+            order_id=order_id,
+            actor=verified_by,
+            action="order_rejected",
+            detail={"reason": reason}
+        )
+        return True
+
+    def log_payment_audit(self, order_id: str, actor: str, action: str, detail: Any = None) -> None:
+        """Appends audit event for payment state transitions."""
+        import json
+        audit_id = f"aud_{uuid.uuid4().hex[:12]}"
+        now_iso = datetime.now(timezone.utc).isoformat()
+        detail_str = json.dumps(detail or {}) if not isinstance(detail, str) else detail
+        sql = """
+            INSERT INTO payment_audit (id, order_id, actor, action, detail_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """
+        self.writer.queue.put((sql, (audit_id, order_id, actor, action, detail_str, now_iso), None))
+        self.flush()

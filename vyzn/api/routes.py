@@ -1,8 +1,25 @@
+from __future__ import annotations
+
+from vyzn.billing.manager import (
+    get_quota_overview,
+    create_quota_order,
+    list_orders_for_tenant,
+    list_pending_orders_for_admin,
+    list_all_orders_for_admin,
+    get_order,
+    submit_order_utr,
+    approve_order,
+    reject_order,
+    handle_admin_telegram_callback,
+    is_admin_user,
+    is_billing_enforced,
+    get_tenant_purchased_quota,
+    check_rate_limit,
+)
 """
 FastAPI route definitions for event retrieval, storage statistics, and dashboard streaming.
 """
 
-from __future__ import annotations
 import os
 import re
 import time
@@ -1936,6 +1953,21 @@ def adopt_camera_endpoint(
     """Adopts a discovered network camera and registers it with security verification."""
     verify_security_action(request, user)
     settings = get_settings()
+    if is_billing_enforced():
+        tenant_id = (user.get("tenant_id") or user.get("id")) if user else "default"
+        used = len(settings.cameras)
+        purchased = get_tenant_purchased_quota(tenant_id, default_used=used)
+        if used >= purchased:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "QUOTA_EXHAUSTED",
+                    "message": "Camera quota exhausted. You have 0 available camera slots. Please add a camera plan in Settings.",
+                    "purchased": purchased,
+                    "used": used,
+                    "available": 0
+                }
+            )
     from vyzn.core.config import CameraConfig
 
     cid = req.camera_id
@@ -2042,6 +2074,21 @@ def create_camera(
     verify_security_action(request, user)
     from vyzn.core.config import CameraConfig
     settings = get_settings()
+    if is_billing_enforced():
+        tenant_id = (user.get("tenant_id") or user.get("id")) if user else "default"
+        used = len(settings.cameras)
+        purchased = get_tenant_purchased_quota(tenant_id, default_used=used)
+        if used >= purchased:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "QUOTA_EXHAUSTED",
+                    "message": "Camera quota exhausted. You have 0 available camera slots. Please add a camera plan in Settings.",
+                    "purchased": purchased,
+                    "used": used,
+                    "available": 0
+                }
+            )
 
     cid = req.id or req.camera_id or f"cam_{re.sub(r'[^a-zA-Z0-9_]', '_', req.name.lower())}_{int(time.time())}"
 
@@ -3846,3 +3893,96 @@ def serve_design_system():
     if design_file.exists():
         return HTMLResponse(content=design_file.read_text(encoding="utf-8"))
     return HTMLResponse(content="<h1>Design showcase not found</h1>")
+
+
+# ===========================================================================
+# Billing & Quota API Routes (Edge parity)
+# ===========================================================================
+
+class EdgeQuotaOrderCreateRequest(BaseModel):
+    quantity: int
+
+class EdgeSubmitUtrRequest(BaseModel):
+    utr: str
+
+class EdgeRejectOrderRequest(BaseModel):
+    reason: Optional[str] = "UTR not verified on bank statement"
+
+@app.get("/billing/quota")
+@app.get("/api/billing/quota")
+def get_edge_billing_quota(request: Request, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    user = user or {"id": "usr_default", "email": "admin@vyzn.ai"}
+    tenant_id = user.get("tenant_id") or user.get("id") or "usr_default"
+    settings = get_settings()
+    used = len(settings.cameras)
+    return get_quota_overview(tenant_id, used)
+
+@app.post("/billing/quota-orders")
+@app.post("/api/billing/quota-orders")
+def post_edge_quota_order(payload: EdgeQuotaOrderCreateRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    user = user or {"id": "usr_default", "email": "admin@vyzn.ai"}
+    tenant_id = user.get("tenant_id") or user.get("id") or "usr_default"
+    user_id = user.get("id") or tenant_id
+    ok, order, err = create_quota_order(tenant_id=tenant_id, user_id=user_id, quantity=payload.quantity, user_email=user.get("email", ""))
+    if not ok:
+        raise HTTPException(status_code=400, detail={"error": err, "active_order": order if isinstance(order, dict) else None})
+    return order
+
+@app.get("/billing/quota-orders")
+@app.get("/api/billing/quota-orders")
+def get_edge_quota_orders(user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    user = user or {"id": "usr_default", "email": "admin@vyzn.ai"}
+    tenant_id = user.get("tenant_id") or user.get("id") or "usr_default"
+    return list_orders_for_tenant(tenant_id)
+
+@app.get("/billing/quota-orders/{order_id}")
+@app.get("/api/billing/quota-orders/{order_id}")
+def get_edge_quota_order_by_id(order_id: str, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    order = get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
+
+@app.post("/billing/quota-orders/{order_id}/submit-utr")
+@app.post("/api/billing/quota-orders/{order_id}/submit-utr")
+def submit_edge_utr_endpoint(order_id: str, payload: EdgeSubmitUtrRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    user = user or {"id": "usr_default", "email": "admin@vyzn.ai"}
+    tenant_id = user.get("tenant_id") or user.get("id") or "usr_default"
+    client_ip = request.client.host if request.client else tenant_id
+    rate_key = f"{tenant_id}:{client_ip}"
+    if not check_rate_limit(rate_key, max_attempts=5, window_sec=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please wait a minute before submitting again.")
+    ok, err, updated_order = submit_order_utr(order_id, payload.utr, actor_id=user.get("id", tenant_id), actor_email=user.get("email", ""))
+    if not ok:
+        status_code = 409 if "already been submitted" in (err or "") else 400
+        raise HTTPException(status_code=status_code, detail=err)
+    return {"ok": True, "order": updated_order, "message": "UTR submitted successfully. Payments are verified manually."}
+
+@app.get("/admin/billing/pending")
+@app.get("/api/admin/billing/pending")
+def admin_get_edge_pending_orders(user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    return {
+        "pending": list_pending_orders_for_admin(),
+        "all": list_all_orders_for_admin()
+    }
+
+@app.post("/admin/billing/orders/{order_id}/approve")
+@app.post("/api/admin/billing/orders/{order_id}/approve")
+def admin_edge_approve_order(order_id: str, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    user = user or {"id": "admin", "email": "admin@vyzn.ai"}
+    admin_name = user.get("email") or user.get("id") or "admin"
+    ok, err, new_quota = approve_order(order_id, verified_by=admin_name)
+    if not ok:
+        raise HTTPException(status_code=400, detail=err)
+    return {"ok": True, "status": "paid", "new_quota": new_quota, "order_id": order_id}
+
+@app.post("/admin/billing/orders/{order_id}/reject")
+@app.post("/api/admin/billing/orders/{order_id}/reject")
+def admin_edge_reject_order(order_id: str, payload: Optional[EdgeRejectOrderRequest] = None, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    user = user or {"id": "admin", "email": "admin@vyzn.ai"}
+    admin_name = user.get("email") or user.get("id") or "admin"
+    reason = payload.reason if payload and payload.reason else "UTR not verified on bank statement"
+    ok, err = reject_order(order_id, verified_by=admin_name, reason=reason)
+    if not ok:
+        raise HTTPException(status_code=400, detail=err)
+    return {"ok": True, "status": "rejected", "order_id": order_id, "reason": reason}
